@@ -1,0 +1,54 @@
+{
+  "name": "n8n-nodes-flowengine",
+  "version": "1.0.0",
+  "description": "n8n node for FlowEngine AI - Create and manage AI-powered workflows",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "flowengine",
+    "ai",
+    "automation"
+  ],
+  "license": "MIT",
+  "homepage": "https://flowengine.cloud",
+  "author": {
+    "name": "FlowEngine",
+    "email": "support@flowengine.cloud"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ami3466/FlowEngine.git"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc && gulp build:icons",
+    "dev": "tsc --watch",
+    "format": "prettier nodes credentials --write",
+    "lint": "eslint nodes credentials package.json",
+    "lintfix": "eslint nodes credentials package.json --fix",
+    "prepublishOnly": "npm run build && npm run lint -c .eslintrc.prepublish.js nodes credentials package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/FlowEngineApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/FlowEngine/FlowEngine.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@typescript-eslint/parser": "^5.30.0",
+    "eslint-plugin-n8n-nodes-base": "^1.11.0",
+    "gulp": "^4.0.2",
+    "n8n-workflow": "*",
+    "prettier": "^2.7.1",
+    "typescript": "^4.7.4"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  }
+}
