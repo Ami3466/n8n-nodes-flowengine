@@ -8,7 +8,7 @@ import {
 export class FlowEngineApi implements ICredentialType {
   name = 'flowEngineApi';
   displayName = 'FlowEngine API';
-  documentationUrl = 'https://app.flowengine.cloud/api-docs';
+  documentationUrl = 'https://flowengine.cloud/api-docs';
   properties: INodeProperties[] = [
     {
       displayName: 'API Key',
@@ -17,7 +17,7 @@ export class FlowEngineApi implements ICredentialType {
       typeOptions: { password: true },
       default: '',
       required: true,
-      description: 'Your FlowEngine API key. Get it from Settings > API Access at app.flowengine.cloud',
+      description: 'Your FlowEngine API key. Get it from Settings > API Access at flowengine.cloud',
     },
   ];
 
@@ -32,7 +32,7 @@ export class FlowEngineApi implements ICredentialType {
 
   test: ICredentialTestRequest = {
     request: {
-      baseURL: 'https://app.flowengine.cloud',
+      baseURL: 'https://flowengine.cloud',
       url: '/api/v1/chat',
       method: 'POST',
       body: {
