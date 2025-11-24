@@ -34,7 +34,8 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/FlowEngineApi.credentials.js"
+      "dist/credentials/FlowEngineApi.credentials.js",
+      "dist/credentials/FlowEngineLlmApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/FlowEngine/FlowEngine.node.js",

@@ -12,14 +12,23 @@ export class FlowEngineLlm implements INodeType {
 	methods = {
 		loadOptions: {
 			async getProviders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const manualApiKey = this.getNodeParameter('options.apiKey', 0) as string | undefined;
-				const apiKey = manualApiKey || process.env.FLOWENGINE_LLM_API_KEY;
+				// Try to get API key from credentials first, then fall back to environment variable
+				let apiKey = process.env.FLOWENGINE_LLM_API_KEY;
+
+				try {
+					const credentials = await this.getCredentials('flowEngineLlmApi');
+					if (credentials?.apiKey) {
+						apiKey = credentials.apiKey as string;
+					}
+				} catch (error) {
+					// Credentials not set, use environment variable
+				}
 
 				if (!apiKey) {
 					return [{
 						name: 'API Key Required',
 						value: '',
-						description: 'Add API key in Options > API Key (Advanced) or use FlowEngine-hosted instance',
+						description: 'Set up FlowEngine LLM API credentials for testing or use FlowEngine-hosted instance',
 					}];
 				}
 
@@ -62,14 +71,23 @@ export class FlowEngineLlm implements INodeType {
 			},
 
 			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const manualApiKey = this.getNodeParameter('options.apiKey', 0) as string | undefined;
-				const apiKey = manualApiKey || process.env.FLOWENGINE_LLM_API_KEY;
+				// Try to get API key from credentials first, then fall back to environment variable
+				let apiKey = process.env.FLOWENGINE_LLM_API_KEY;
+
+				try {
+					const credentials = await this.getCredentials('flowEngineLlmApi');
+					if (credentials?.apiKey) {
+						apiKey = credentials.apiKey as string;
+					}
+				} catch (error) {
+					// Credentials not set, use environment variable
+				}
 
 				if (!apiKey) {
 					return [{
 						name: 'API Key Required',
 						value: '',
-						description: 'Add API key in Options > API Key (Advanced) or use FlowEngine-hosted instance',
+						description: 'Set up FlowEngine LLM API credentials for testing or use FlowEngine-hosted instance',
 					}];
 				}
 
@@ -142,7 +160,17 @@ export class FlowEngineLlm implements INodeType {
 			},
 		],
 		outputNames: ['Model'],
-		credentials: [],
+		credentials: [
+			{
+				name: 'flowEngineLlmApi',
+				required: false,
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+		],
 		properties: [
 			{
 				displayName: 'This node is only available for FlowEngine-hosted n8n instances. Visit app.flowengine.cloud to get a hosted instance with access to 100+ AI models.',
@@ -180,14 +208,6 @@ export class FlowEngineLlm implements INodeType {
 				type: 'collection',
 				default: {},
 				options: [
-					{
-						displayName: 'API Key (Advanced)',
-						name: 'apiKey',
-						type: 'string',
-						typeOptions: { password: true },
-						default: '',
-						description: 'Manually provide FlowEngine LLM API key (only use if environment variable is not set)',
-					},
 					{
 						displayName: 'Frequency Penalty',
 						name: 'frequencyPenalty',
@@ -258,7 +278,6 @@ export class FlowEngineLlm implements INodeType {
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
-			apiKey?: string;
 			frequencyPenalty?: number;
 			maxTokens?: number;
 			maxRetries?: number;
@@ -268,14 +287,23 @@ export class FlowEngineLlm implements INodeType {
 			topP?: number;
 		};
 
-		// Use manual API key if provided, otherwise use environment variable
-		const apiKey = options.apiKey || process.env.FLOWENGINE_LLM_API_KEY;
+		// Try to get API key from credentials first, then fall back to environment variable
+		let apiKey = process.env.FLOWENGINE_LLM_API_KEY;
+
+		try {
+			const credentials = await this.getCredentials('flowEngineLlmApi');
+			if (credentials?.apiKey) {
+				apiKey = credentials.apiKey as string;
+			}
+		} catch (error) {
+			// Credentials not set, use environment variable
+		}
 
 		if (!apiKey) {
 			throw new Error(
 				'FlowEngine LLM is only available for FlowEngine-hosted n8n instances. ' +
 				'Visit app.flowengine.cloud to get a hosted instance with this feature. ' +
-				'Alternatively, add your API key in the Options > API Key (Advanced) field.',
+				'For testing, set up FlowEngine LLM API credentials in Settings > Credentials.',
 			);
 		}
 
