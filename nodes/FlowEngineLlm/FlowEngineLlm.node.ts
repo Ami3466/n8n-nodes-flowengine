@@ -31,62 +31,22 @@ export class FlowEngineLlm implements INodeType {
 			},
 		],
 		outputNames: ['Model'],
-		credentials: [
-			{
-				name: 'flowEngineLlmApi',
-				required: true,
-			},
-		],
-		requestDefaults: {
-			ignoreHttpStatusErrors: true,
-			baseURL: '={{ $credentials?.url }}',
-		},
+		credentials: [],
 		properties: [
+			{
+				displayName: 'This node is only available for FlowEngine-hosted n8n instances. Visit app.flowengine.cloud to get a hosted instance with access to 100+ AI models via LiteLLM.',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Model',
 				name: 'model',
-				type: 'options',
-				description: 'The AI model to use',
-				typeOptions: {
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'GET',
-								url: '/v1/models',
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'data',
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{$responseItem.id}}',
-											value: '={{$responseItem.id}}',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
-						},
-					},
-				},
-				routing: {
-					send: {
-						type: 'body',
-						property: 'model',
-					},
-				},
+				type: 'string',
 				default: '',
+				required: true,
+				description: 'The AI model to use (e.g., gpt-4, claude-3-5-sonnet-20241022, gemini-pro)',
+				placeholder: 'gpt-4',
 			},
 			{
 				displayName: 'Options',
@@ -163,7 +123,14 @@ export class FlowEngineLlm implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('flowEngineLlmApi');
+		const apiKey = process.env.FLOWENGINE_LLM_API_KEY;
+
+		if (!apiKey) {
+			throw new Error(
+				'FlowEngine LLM is only available for FlowEngine-hosted n8n instances. ' +
+				'Visit app.flowengine.cloud to get a hosted instance with this feature.',
+			);
+		}
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
@@ -178,11 +145,11 @@ export class FlowEngineLlm implements INodeType {
 		};
 
 		const configuration: ClientOptions = {
-			baseURL: credentials.url as string,
+			baseURL: 'https://litellm.flowengine.cloud',
 		};
 
 		const model = new ChatOpenAI({
-			apiKey: credentials.apiKey as string,
+			apiKey: apiKey,
 			model: modelName,
 			...options,
 			timeout: options.timeout ?? 60000,
