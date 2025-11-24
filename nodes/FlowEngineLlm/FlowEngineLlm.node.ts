@@ -29,7 +29,7 @@ export class FlowEngineLlm implements INodeType {
 				let apiKey = process.env.FLOWENGINE_LLM_API_KEY;
 
 				try {
-					const credentials = await this.getCredentials('flowEngineLlmApi');
+					const credentials = await this.getCredentials('flowEngineApi');
 					if (credentials?.apiKey) {
 						apiKey = credentials.apiKey as string;
 					}
@@ -41,7 +41,7 @@ export class FlowEngineLlm implements INodeType {
 					return [{
 						name: 'API Key Required',
 						value: '',
-						description: 'Set up FlowEngine LLM API credentials for testing or use FlowEngine-hosted instance',
+						description: 'Set up FlowEngine API credentials or use FlowEngine-hosted instance',
 					}];
 				}
 
@@ -57,7 +57,7 @@ export class FlowEngineLlm implements INodeType {
 						// Extract unique providers
 						const providers = new Set<string>();
 						response.data.forEach((model: any) => {
-							const provider = model.model_info?.litellm_provider;
+							const provider = model.model_info?.provider || model.model_info?.litellm_provider;
 							if (provider) {
 								providers.add(provider);
 							}
@@ -88,7 +88,7 @@ export class FlowEngineLlm implements INodeType {
 				let apiKey = process.env.FLOWENGINE_LLM_API_KEY;
 
 				try {
-					const credentials = await this.getCredentials('flowEngineLlmApi');
+					const credentials = await this.getCredentials('flowEngineApi');
 					if (credentials?.apiKey) {
 						apiKey = credentials.apiKey as string;
 					}
@@ -100,7 +100,7 @@ export class FlowEngineLlm implements INodeType {
 					return [{
 						name: 'API Key Required',
 						value: '',
-						description: 'Set up FlowEngine LLM API credentials for testing or use FlowEngine-hosted instance',
+						description: 'Set up FlowEngine API credentials or use FlowEngine-hosted instance',
 					}];
 				}
 
@@ -118,20 +118,22 @@ export class FlowEngineLlm implements INodeType {
 						// Filter by provider if not "all"
 						let models = response.data;
 						if (provider && provider !== 'all') {
-							models = models.filter((model: any) =>
-								model.model_info?.litellm_provider === provider
-							);
+							models = models.filter((model: any) => {
+								const modelProvider = model.model_info?.provider || model.model_info?.litellm_provider;
+								return modelProvider === provider;
+							});
 						}
 
 						return models
 							.filter((model: any) => model.model_name)
-							.map((model: any) => ({
-								name: model.model_name,
-								value: model.model_name,
-								description: model.model_info?.litellm_provider
-									? `Provider: ${model.model_info.litellm_provider}`
-									: undefined,
-							}))
+							.map((model: any) => {
+								const modelProvider = model.model_info?.provider || model.model_info?.litellm_provider;
+								return {
+									name: model.model_name,
+									value: model.model_name,
+									description: modelProvider ? `Provider: ${modelProvider}` : undefined,
+								};
+							})
 							.sort((a: INodePropertyOptions, b: INodePropertyOptions) =>
 								(a.name as string).localeCompare(b.name as string)
 							);
@@ -143,7 +145,7 @@ export class FlowEngineLlm implements INodeType {
 				return [{
 					name: 'Error loading models',
 					value: '',
-					description: 'Failed to fetch available models from FlowEngine LLM',
+					description: 'Failed to fetch available models from FlowEngine',
 				}];
 			},
 		},
@@ -155,7 +157,7 @@ export class FlowEngineLlm implements INodeType {
 		icon: 'file:flowengine.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Access multiple AI models via FlowEngine LLM (FlowEngine-hosted instances only)',
+		description: 'Access 100+ AI models (OpenAI, Anthropic, Google, Mistral, etc.) via FlowEngine',
 		defaults: {
 			name: 'FlowEngine LLM Chat Model',
 		},
@@ -170,7 +172,7 @@ export class FlowEngineLlm implements INodeType {
 		outputNames: ['Model'],
 		credentials: [
 			{
-				name: 'flowEngineLlmApi',
+				name: 'flowEngineApi',
 				required: false,
 				displayOptions: {
 					show: {
@@ -181,7 +183,7 @@ export class FlowEngineLlm implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'This node works automatically on FlowEngine-hosted n8n instances (pre-configured, no credentials needed). Contact support@flowengine.cloud if you are hosting with FlowEngine and it\'s not working.',
+				displayName: 'If you are hosting on FlowEngine, this node is automatically configured. If self-hosting, go to FlowEngine Settings to get your API key and add it to your FlowEngine API credentials.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -252,7 +254,7 @@ export class FlowEngineLlm implements INodeType {
 		let apiKey = process.env.FLOWENGINE_LLM_API_KEY;
 
 		try {
-			const credentials = await this.getCredentials('flowEngineLlmApi');
+			const credentials = await this.getCredentials('flowEngineApi');
 			if (credentials?.apiKey) {
 				apiKey = credentials.apiKey as string;
 			}
@@ -262,9 +264,8 @@ export class FlowEngineLlm implements INodeType {
 
 		if (!apiKey) {
 			throw new Error(
-				'FlowEngine LLM is only available for FlowEngine-hosted n8n instances. ' +
-				'Visit app.flowengine.cloud to get a hosted instance with this feature. ' +
-				'For testing, set up FlowEngine LLM API credentials in Settings > Credentials.',
+				'FlowEngine API key required. If hosting on FlowEngine, this is auto-configured. ' +
+				'If self-hosting, get your API key from FlowEngine Settings and add it to your FlowEngine API credentials.',
 			);
 		}
 

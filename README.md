@@ -130,7 +130,7 @@ A LangChain-compatible chat model node that provides access to **100+ AI models*
 
 **Availability:**
 - **FlowEngine-Hosted Instances**: Automatically enabled with pre-configured API access
-- **Self-Hosted**: Add API key in Options > API Key (Advanced) for testing
+- **Self-Hosted**: Get your API key from FlowEngine Settings and add it to FlowEngine API credentials
 
 **Use Cases:**
 - Build AI agents with tools and memory
@@ -141,7 +141,7 @@ A LangChain-compatible chat model node that provides access to **100+ AI models*
 
 ## Credentials
 
-You need a FlowEngine API key to use this node.
+You need a FlowEngine API key to use the FlowEngine Chat and FlowEngine LLM nodes.
 
 ### Getting Your API Key
 
@@ -157,6 +157,8 @@ You need a FlowEngine API key to use this node.
 3. Search for **FlowEngine API**
 4. Paste your API key
 5. Click **Save**
+
+**Note:** The same FlowEngine API credentials work for both the FlowEngine Chat node and the FlowEngine LLM Chat Model node. If you're hosting on FlowEngine, credentials are auto-configured.
 
 ## Compatibility
 
@@ -258,7 +260,16 @@ This allows you to pass data from previous nodes into FlowEngine.
 
 ## Version history
 
-### 1.5.2 (Latest)
+### 1.6.0 (Latest)
+
+- **FlowEngine LLM Node Update**: Now uses shared FlowEngine API credentials
+  - Same credentials work across all FlowEngine nodes (Chat, LLM)
+  - Auto-configured for FlowEngine-hosted instances
+  - Self-hosted users can add FlowEngine API key from Settings
+  - Improved messaging and user experience
+  - Removed internal implementation references
+
+### 1.5.2
 
 - Rebranded Send Email Test node to "FlowEngine Send Email Test"
 - Updated node icon to FlowEngine logo for consistent branding
