@@ -9,6 +9,18 @@ import {
 	type INodePropertyOptions,
 } from 'n8n-workflow';
 
+// Custom ChatOpenAI class that removes OpenAI-specific parameters for multi-provider compatibility
+class FlowEngineChatOpenAI extends ChatOpenAI {
+	invocationParams(options?: any, extra?: any) {
+		const params = super.invocationParams(options, extra);
+		// Remove OpenAI-specific parameters that other providers don't support
+		delete params.frequency_penalty;
+		delete params.presence_penalty;
+		delete params.top_p;
+		return params;
+	}
+}
+
 export class FlowEngineLlm implements INodeType {
 	methods = {
 		loadOptions: {
@@ -278,7 +290,7 @@ export class FlowEngineLlm implements INodeType {
 			modelOptions.maxTokens = options.maxTokens;
 		}
 
-		const model = new ChatOpenAI(modelOptions);
+		const model = new FlowEngineChatOpenAI(modelOptions);
 
 		return {
 			response: model,
