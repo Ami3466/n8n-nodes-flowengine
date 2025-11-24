@@ -8,9 +8,9 @@ import type {
 export class FlowEngineLlmApi implements ICredentialType {
 	name = 'flowEngineLlmApi';
 
-	displayName = 'FlowEngine LLM API (Testing Only)';
+	displayName = 'LiteLLM API (Testing Only)';
 
-	documentationUrl = 'flowengine';
+	documentationUrl = 'litellm';
 
 	properties: INodeProperties[] = [
 		{
@@ -25,7 +25,16 @@ export class FlowEngineLlmApi implements ICredentialType {
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 			description:
-				'⚠️ These credentials are for testing purposes only. FlowEngine-hosted instances use pre-configured environment variables and do not require manual credential entry.',
+				'⚠️ FOR TESTING ONLY - FlowEngine-hosted n8n instances have LiteLLM pre-configured automatically. Only use these credentials if testing with your own LiteLLM instance.',
+		},
+		{
+			displayName: 'Master Key',
+			name: 'masterKey',
+			type: 'string',
+			typeOptions: { password: true },
+			required: false,
+			default: '',
+			description: 'LiteLLM master key (for admin operations like creating virtual keys)',
 		},
 		{
 			displayName: 'API Key',
@@ -34,7 +43,7 @@ export class FlowEngineLlmApi implements ICredentialType {
 			typeOptions: { password: true },
 			required: true,
 			default: '',
-			description: 'Your FlowEngine LLM API key (user/virtual key for LiteLLM proxy)',
+			description: 'LiteLLM user/virtual key (for making API calls to models)',
 		},
 		{
 			displayName: 'Base URL',
