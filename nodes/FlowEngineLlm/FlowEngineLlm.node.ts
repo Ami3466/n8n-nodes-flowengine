@@ -4,9 +4,118 @@ import {
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
+	type ILoadOptionsFunctions,
+	type INodePropertyOptions,
 } from 'n8n-workflow';
 
 export class FlowEngineLlm implements INodeType {
+	methods = {
+		loadOptions: {
+			async getProviders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const apiKey = process.env.FLOWENGINE_LLM_API_KEY;
+
+				if (!apiKey) {
+					return [{
+						name: 'FlowEngine LLM not available',
+						value: '',
+						description: 'This feature is only available for FlowEngine-hosted n8n instances',
+					}];
+				}
+
+				try {
+					const response = await this.helpers.request({
+						method: 'GET',
+						url: 'https://litellm.flowengine.cloud/model/info',
+						headers: { 'Authorization': `Bearer ${apiKey}` },
+						json: true,
+					});
+
+					if (response.data && Array.isArray(response.data)) {
+						// Extract unique providers
+						const providers = new Set<string>();
+						response.data.forEach((model: any) => {
+							const provider = model.model_info?.litellm_provider;
+							if (provider) {
+								providers.add(provider);
+							}
+						});
+
+						const providerOptions = Array.from(providers)
+							.sort()
+							.map(provider => ({
+								name: provider.charAt(0).toUpperCase() + provider.slice(1),
+								value: provider,
+							}));
+
+						// Add "All Providers" option at the top
+						return [
+							{ name: 'All Providers', value: 'all' },
+							...providerOptions,
+						];
+					}
+				} catch (error) {
+					console.error('Error fetching providers:', error);
+				}
+
+				return [{ name: 'All Providers', value: 'all' }];
+			},
+
+			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const apiKey = process.env.FLOWENGINE_LLM_API_KEY;
+
+				if (!apiKey) {
+					return [{
+						name: 'FlowEngine LLM not available',
+						value: '',
+						description: 'This feature is only available for FlowEngine-hosted n8n instances',
+					}];
+				}
+
+				const provider = this.getCurrentNodeParameter('provider') as string;
+
+				try {
+					const response = await this.helpers.request({
+						method: 'GET',
+						url: 'https://litellm.flowengine.cloud/model/info',
+						headers: { 'Authorization': `Bearer ${apiKey}` },
+						json: true,
+					});
+
+					if (response.data && Array.isArray(response.data)) {
+						// Filter by provider if not "all"
+						let models = response.data;
+						if (provider && provider !== 'all') {
+							models = models.filter((model: any) =>
+								model.model_info?.litellm_provider === provider
+							);
+						}
+
+						return models
+							.filter((model: any) => model.model_name)
+							.map((model: any) => ({
+								name: model.model_name,
+								value: model.model_name,
+								description: model.model_info?.litellm_provider
+									? `Provider: ${model.model_info.litellm_provider}`
+									: undefined,
+							}))
+							.sort((a: INodePropertyOptions, b: INodePropertyOptions) =>
+								(a.name as string).localeCompare(b.name as string)
+							);
+					}
+				} catch (error) {
+					console.error('Error fetching models:', error);
+				}
+
+				return [{
+					name: 'Error loading models',
+					value: '',
+					description: 'Failed to fetch available models from FlowEngine LLM',
+				}];
+			},
+		},
+	};
+
 	description: INodeTypeDescription = {
 		displayName: 'FlowEngine LLM Chat Model',
 		name: 'flowEngineLlm',
@@ -34,19 +143,32 @@ export class FlowEngineLlm implements INodeType {
 		credentials: [],
 		properties: [
 			{
-				displayName: 'This node is only available for FlowEngine-hosted n8n instances. Visit app.flowengine.cloud to get a hosted instance with access to 100+ AI models via LiteLLM.',
+				displayName: 'This node is only available for FlowEngine-hosted n8n instances. Visit app.flowengine.cloud to get a hosted instance with access to 100+ AI models.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
 			},
 			{
+				displayName: 'Provider',
+				name: 'provider',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getProviders',
+				},
+				default: 'all',
+				description: 'Filter models by provider',
+			},
+			{
 				displayName: 'Model',
 				name: 'model',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsDependsOn: ['provider'],
+					loadOptionsMethod: 'getModels',
+				},
 				default: '',
 				required: true,
-				description: 'The AI model to use (e.g., gpt-4, claude-3-5-sonnet-20241022, gemini-pro)',
-				placeholder: 'gpt-4',
+				description: 'The AI model to use',
 			},
 			{
 				displayName: 'Options',
