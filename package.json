@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-flowengine",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "n8n node for FlowEngine AI - Create and manage AI-powered workflows",
   "keywords": [
     "n8n-community-node-package",
