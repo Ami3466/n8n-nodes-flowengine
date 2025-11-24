@@ -1,5 +1,6 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -153,12 +154,7 @@ export class FlowEngineLlm implements INodeType {
 			},
 		},
 		inputs: [],
-		outputs: [
-			{
-				type: 'ai_languageModel',
-				displayName: 'Language Model',
-			},
-		],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -309,6 +305,10 @@ export class FlowEngineLlm implements INodeType {
 
 		const configuration: ClientOptions = {
 			baseURL: 'https://litellm.flowengine.cloud',
+			defaultHeaders: {
+				'HTTP-Referer': 'https://flowengine.cloud',
+				'X-Title': 'FlowEngine n8n',
+			},
 		};
 
 		const model = new ChatOpenAI({

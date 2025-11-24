@@ -67,10 +67,9 @@ A LangChain-compatible chat model node that provides access to 100+ AI models fo
 - **Options**:
   - Temperature (0-2): Controls randomness in responses
   - Max Tokens: Maximum length of generated responses
-  - Frequency/Presence Penalty: Reduce repetition
+  - Frequency/Presence Penalty: Reduce repetition (OpenAI-compatible models)
   - Top P: Alternative to temperature for controlling randomness
   - Timeout & Max Retries: Connection settings
-  - **API Key (Advanced)**: Manually provide API key for testing (hidden in Options)
 
 **Availability:**
 - **FlowEngine-Hosted Instances**: Automatically enabled with pre-configured API access
