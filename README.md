@@ -258,7 +258,12 @@ This allows you to pass data from previous nodes into FlowEngine.
 
 ## Version history
 
-### 1.5.0 (Latest)
+### 1.5.2 (Latest)
+
+- Rebranded Send Email Test node to "FlowEngine Send Email Test"
+- Updated node icon to FlowEngine logo for consistent branding
+
+### 1.5.0
 
 - **NEW: Send Email Test Node** - Zero-setup email testing
   - Auto-generated Ethereal.email test accounts
