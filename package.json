@@ -1,13 +1,20 @@
 {
   "name": "n8n-nodes-flowengine",
-  "version": "1.4.13",
-  "description": "n8n node for FlowEngine AI - Create and manage AI-powered workflows",
+  "version": "1.5.0",
+  "description": "n8n nodes for FlowEngine AI + Zero-Setup Email Testing - AI automation and email testing made easy",
   "keywords": [
     "n8n-community-node-package",
     "n8n",
     "flowengine",
     "ai",
-    "automation"
+    "automation",
+    "email",
+    "testing",
+    "smtp",
+    "ethereal",
+    "langchain",
+    "openai",
+    "anthropic"
   ],
   "license": "MIT",
   "homepage": "https://flowengine.cloud",
@@ -39,10 +46,13 @@
     ],
     "nodes": [
       "dist/nodes/FlowEngine/FlowEngine.node.js",
-      "dist/nodes/FlowEngineLlm/FlowEngineLlm.node.js"
+      "dist/nodes/FlowEngineLlm/FlowEngineLlm.node.js",
+      "dist/nodes/SendEmailTest/SendEmailTest.node.js"
     ]
   },
   "devDependencies": {
+    "@types/mailparser": "^3.4.6",
+    "@types/nodemailer": "^7.0.4",
     "@typescript-eslint/parser": "^5.30.0",
     "eslint-plugin-n8n-nodes-base": "^1.11.0",
     "gulp": "^4.0.2",
@@ -51,7 +61,10 @@
     "typescript": "^5.7.2"
   },
   "dependencies": {
-    "@langchain/openai": "^0.3.14"
+    "@langchain/openai": "^0.3.14",
+    "imapflow": "^1.1.1",
+    "mailparser": "^3.9.0",
+    "nodemailer": "^7.0.10"
   },
   "peerDependencies": {
     "n8n-workflow": "*"

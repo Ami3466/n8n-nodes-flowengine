@@ -1,8 +1,11 @@
 # n8n-nodes-flowengine
 
-This is an n8n community node that lets you use [FlowEngine AI](https://flowengine.cloud) in your n8n workflows.
+**FlowEngine AI + Email Testing** - Powerful AI automation nodes for n8n workflows.
 
-FlowEngine is an AI-powered workflow automation platform that helps you create and manage intelligent workflows.
+This community node package provides:
+- **FlowEngine AI Chat** - Conversational AI with workflow intelligence
+- **FlowEngine LLM** - 100+ AI models (OpenAI, Anthropic, Google, Mistral, etc.) via LangChain
+- **Send Email Test** - Zero-setup email testing with embedded content (NEW!)
 
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/reference/license/) workflow automation platform.
 
@@ -34,11 +37,63 @@ RUN cd /usr/local/lib/node_modules/n8n && npm install n8n-nodes-flowengine
 
 ## Nodes
 
-This package includes two nodes:
+This package includes **3 powerful nodes**:
 
-### 1. FlowEngine (Regular Node)
+### 1. Send Email Test (NEW!)
 
-Send messages to FlowEngine AI and get intelligent responses.
+**Zero-setup email testing with embedded content** - No SMTP configuration required!
+
+Send test emails and instantly get the full email content embedded in the n8n output. Perfect for testing email workflows, templates, and automation.
+
+**Features:**
+- ✅ **No Setup Required** - Auto-generates test email accounts via Ethereal.email
+- ✅ **Embedded Email Content** - Full email (HTML, text, headers, attachments) in n8n output
+- ✅ **Instant Preview** - Click URL to view email in browser
+- ✅ **Text & HTML Support** - Send plain text or HTML emails
+- ✅ **Auto-Cached Credentials** - Reuses account for 48 hours per workflow
+- ✅ **IMAP Fetching** - Retrieves sent email via IMAP automatically
+
+**Parameters:**
+- **To Email**: Recipient address (any email - won't actually deliver)
+- **Subject**: Email subject line
+- **Email Body**: Text or HTML content
+- **Body Type**: Choose "Text" or "HTML"
+
+**Returns:**
+```json
+{
+  "success": true,
+  "sentEmail": { "from": "...", "to": "...", "subject": "..." },
+  "receivedEmail": {
+    "subject": "...",
+    "from": "...",
+    "to": "...",
+    "textContent": "Plain text version",
+    "htmlContent": "<h1>HTML version</h1>",
+    "headers": {...},
+    "attachments": [...]
+  },
+  "previewUrl": "https://ethereal.email/message/...",
+  "credentials": {
+    "email": "test@ethereal.email",
+    "password": "...",
+    "webUrl": "https://ethereal.email"
+  }
+}
+```
+
+**Use Cases:**
+- Test email templates before sending to real users
+- Verify HTML rendering and formatting
+- Debug email workflows without spamming inboxes
+- Validate email content in automated tests
+- Preview transactional emails
+
+---
+
+### 2. FlowEngine (AI Chat Node)
+
+Send messages to FlowEngine AI and get intelligent responses for workflow automation.
 
 **Parameters:**
 - **Message**: The message/prompt to send to FlowEngine AI
@@ -51,9 +106,11 @@ Send messages to FlowEngine AI and get intelligent responses.
 - `conversation_id`: ID to continue the conversation
 - `credits_remaining`: Your remaining FlowEngine credits
 
-### 2. FlowEngine LLM Chat Model (LangChain Node)
+---
 
-A LangChain-compatible chat model node that provides access to 100+ AI models for use with n8n's AI Agent, Chain, and other LangChain nodes.
+### 3. FlowEngine LLM Chat Model (LangChain Node)
+
+A LangChain-compatible chat model node that provides access to **100+ AI models** for use with n8n's AI Agent, Chain, and other LangChain nodes.
 
 **Features:**
 - **Dynamic Model Loading**: Automatically fetches available models from your FlowEngine LLM configuration
@@ -106,6 +163,39 @@ You need a FlowEngine API key to use this node.
 Tested with n8n version 0.228.0+
 
 ## Usage
+
+### Send Email Test Node Examples
+
+#### Example: Test HTML Email Template
+
+1. Add a **Send Email Test** node
+2. **To Email**: `customer@example.com` (any address - won't deliver)
+3. **Subject**: `Welcome to Our Service!`
+4. **Body Type**: HTML
+5. **Email Body**:
+```html
+<h1>Welcome!</h1>
+<p>Thanks for signing up, <strong>{{name}}</strong>!</p>
+<a href="https://example.com">Get Started</a>
+```
+6. Execute and check `receivedEmail.htmlContent` in output
+
+#### Example: Verify Email Workflow
+
+1. **HTTP Request** node - Fetch user data
+2. **Code** node - Generate personalized email HTML
+3. **Send Email Test** node - Test the generated email
+4. **IF** node - Check if `receivedEmail.htmlContent` contains expected content
+5. **Send Email** node (real SMTP) - Send only if test passes
+
+#### Example: Email A/B Testing
+
+1. Create two **Send Email Test** nodes with different templates
+2. Compare `receivedEmail.textContent` and `htmlContent` from both
+3. Use **Code** node to analyze which performs better
+4. Route to winning template for production
+
+---
 
 ### FlowEngine Node Examples
 
@@ -167,6 +257,17 @@ This allows you to pass data from previous nodes into FlowEngine.
 * [FlowEngine Website](https://flowengine.cloud)
 
 ## Version history
+
+### 1.5.0 (Latest)
+
+- **NEW: Send Email Test Node** - Zero-setup email testing
+  - Auto-generated Ethereal.email test accounts
+  - Embedded email content via IMAP (HTML, text, headers, attachments)
+  - Instant preview URLs
+  - 48-hour credential caching per workflow
+  - No SMTP configuration required
+- Added dependencies: `nodemailer`, `imapflow`, `mailparser`
+- Updated README with comprehensive examples
 
 ### 1.3.0
 
