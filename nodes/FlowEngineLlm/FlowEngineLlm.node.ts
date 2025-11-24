@@ -298,10 +298,12 @@ export class FlowEngineLlm implements INodeType {
 			apiKey: apiKey,
 			model: modelName,
 			configuration,
+			// Explicitly set these to undefined to prevent ChatOpenAI from sending default values
+			frequencyPenalty: undefined,
+			presencePenalty: undefined,
 		};
 
-		// Add all configured parameters - the server has drop_params: true configured
-		// which automatically filters out unsupported parameters for each provider
+		// Add configured parameters
 		if (options.temperature !== undefined) {
 			modelOptions.temperature = options.temperature;
 		}
@@ -311,6 +313,7 @@ export class FlowEngineLlm implements INodeType {
 		if (options.topP !== undefined) {
 			modelOptions.topP = options.topP;
 		}
+		// Only set OpenAI-specific params if explicitly configured
 		if (options.frequencyPenalty !== undefined && options.frequencyPenalty !== 0) {
 			modelOptions.frequencyPenalty = options.frequencyPenalty;
 		}
