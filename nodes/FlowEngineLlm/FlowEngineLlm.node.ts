@@ -205,6 +205,15 @@ export class FlowEngineLlm implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Sampling Temperature',
+						name: 'temperature',
+						default: 0.7,
+						typeOptions: { maxValue: 2, minValue: 0, numberPrecision: 1 },
+						description:
+							'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
+						type: 'number',
+					},
+					{
 						displayName: 'Maximum Number of Tokens',
 						name: 'maxTokens',
 						default: -1,
@@ -216,15 +225,6 @@ export class FlowEngineLlm implements INodeType {
 						},
 					},
 					{
-						displayName: 'Sampling Temperature',
-						name: 'temperature',
-						default: 0.7,
-						typeOptions: { maxValue: 2, minValue: 0, numberPrecision: 1 },
-						description:
-							'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
-						type: 'number',
-					},
-					{
 						displayName: 'Top P',
 						name: 'topP',
 						default: 1,
@@ -234,17 +234,21 @@ export class FlowEngineLlm implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Timeout',
-						name: 'timeout',
-						default: 60000,
-						description: 'Maximum amount of time a request is allowed to take in milliseconds',
+						displayName: 'Frequency Penalty',
+						name: 'frequencyPenalty',
+						default: 0,
+						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
+						description:
+							"Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim",
 						type: 'number',
 					},
 					{
-						displayName: 'Max Retries',
-						name: 'maxRetries',
-						default: 2,
-						description: 'Maximum number of retries to attempt',
+						displayName: 'Presence Penalty',
+						name: 'presencePenalty',
+						default: 0,
+						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
+						description:
+							"Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics",
 						type: 'number',
 					},
 				],
@@ -254,13 +258,12 @@ export class FlowEngineLlm implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
-
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
-			maxTokens?: number;
-			maxRetries?: number;
-			timeout?: number;
 			temperature?: number;
+			maxTokens?: number;
 			topP?: number;
+			frequencyPenalty?: number;
+			presencePenalty?: number;
 		};
 
 		// Try to get API key from credentials first, then fall back to environment variable
@@ -291,24 +294,45 @@ export class FlowEngineLlm implements INodeType {
 			},
 		};
 
-		// Only include universal parameters that work across all providers
+		// Fetch supported parameters for this model
+		let supportedParams: string[] = [];
+		try {
+			const paramsResponse = await this.helpers.request({
+				method: 'GET',
+				url: `https://litellm.flowengine.cloud/utils/supported_openai_params?model=${encodeURIComponent(modelName)}`,
+				headers: { 'Authorization': `Bearer ${apiKey}` },
+				json: true,
+			});
+
+			if (Array.isArray(paramsResponse)) {
+				supportedParams = paramsResponse;
+			}
+		} catch (error) {
+			// If we can't fetch supported params, send all params and let server handle it
+			console.warn('Could not fetch supported params, sending all parameters:', error);
+		}
+
 		const modelOptions: any = {
 			apiKey: apiKey,
 			model: modelName,
-			timeout: options.timeout ?? 60000,
-			maxRetries: options.maxRetries ?? 2,
 			configuration,
 		};
 
-		// Add universal parameters
-		if (options.temperature !== undefined) {
+		// Only add parameters that are supported by this model
+		if (options.temperature !== undefined && (supportedParams.length === 0 || supportedParams.includes('temperature'))) {
 			modelOptions.temperature = options.temperature;
 		}
-		if (options.maxTokens !== undefined && options.maxTokens !== -1) {
+		if (options.maxTokens !== undefined && options.maxTokens !== -1 && (supportedParams.length === 0 || supportedParams.includes('max_tokens'))) {
 			modelOptions.maxTokens = options.maxTokens;
 		}
-		if (options.topP !== undefined) {
+		if (options.topP !== undefined && (supportedParams.length === 0 || supportedParams.includes('top_p'))) {
 			modelOptions.topP = options.topP;
+		}
+		if (options.frequencyPenalty !== undefined && options.frequencyPenalty !== 0 && (supportedParams.length === 0 || supportedParams.includes('frequency_penalty'))) {
+			modelOptions.frequencyPenalty = options.frequencyPenalty;
+		}
+		if (options.presencePenalty !== undefined && options.presencePenalty !== 0 && (supportedParams.length === 0 || supportedParams.includes('presence_penalty'))) {
+			modelOptions.presencePenalty = options.presencePenalty;
 		}
 
 		const model = new ChatOpenAI(modelOptions);
