@@ -294,44 +294,27 @@ export class FlowEngineLlm implements INodeType {
 			},
 		};
 
-		// Fetch supported parameters for this model
-		let supportedParams: string[] = [];
-		try {
-			const paramsResponse = await this.helpers.request({
-				method: 'GET',
-				url: `https://litellm.flowengine.cloud/utils/supported_openai_params?model=${encodeURIComponent(modelName)}`,
-				headers: { 'Authorization': `Bearer ${apiKey}` },
-				json: true,
-			});
-
-			if (Array.isArray(paramsResponse)) {
-				supportedParams = paramsResponse;
-			}
-		} catch (error) {
-			// If we can't fetch supported params, send all params and let server handle it
-			console.warn('Could not fetch supported params, sending all parameters:', error);
-		}
-
 		const modelOptions: any = {
 			apiKey: apiKey,
 			model: modelName,
 			configuration,
 		};
 
-		// Only add parameters that are supported by this model
-		if (options.temperature !== undefined && (supportedParams.length === 0 || supportedParams.includes('temperature'))) {
+		// Add all configured parameters - the server has drop_params: true configured
+		// which automatically filters out unsupported parameters for each provider
+		if (options.temperature !== undefined) {
 			modelOptions.temperature = options.temperature;
 		}
-		if (options.maxTokens !== undefined && options.maxTokens !== -1 && (supportedParams.length === 0 || supportedParams.includes('max_tokens'))) {
+		if (options.maxTokens !== undefined && options.maxTokens !== -1) {
 			modelOptions.maxTokens = options.maxTokens;
 		}
-		if (options.topP !== undefined && (supportedParams.length === 0 || supportedParams.includes('top_p'))) {
+		if (options.topP !== undefined) {
 			modelOptions.topP = options.topP;
 		}
-		if (options.frequencyPenalty !== undefined && options.frequencyPenalty !== 0 && (supportedParams.length === 0 || supportedParams.includes('frequency_penalty'))) {
+		if (options.frequencyPenalty !== undefined && options.frequencyPenalty !== 0) {
 			modelOptions.frequencyPenalty = options.frequencyPenalty;
 		}
-		if (options.presencePenalty !== undefined && options.presencePenalty !== 0 && (supportedParams.length === 0 || supportedParams.includes('presence_penalty'))) {
+		if (options.presencePenalty !== undefined && options.presencePenalty !== 0) {
 			modelOptions.presencePenalty = options.presencePenalty;
 		}
 
