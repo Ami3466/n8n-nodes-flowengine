@@ -169,7 +169,7 @@ export class FlowEngineLlm implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'This node works automatically on FlowEngine-hosted n8n instances (pre-configured, no credentials needed). For testing purposes, you can set up API credentials in Settings > Credentials.',
+				displayName: 'This node works automatically on FlowEngine-hosted n8n instances (pre-configured, no credentials needed). Contact support@flowengine.cloud if you are hosting with FlowEngine and it\'s not working.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -311,14 +311,40 @@ export class FlowEngineLlm implements INodeType {
 			},
 		};
 
-		const model = new ChatOpenAI({
+		// Only include universal parameters that work across all providers
+		const modelOptions: any = {
 			apiKey: apiKey,
 			model: modelName,
-			...options,
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
-		});
+		};
+
+		// Add universal parameters
+		if (options.temperature !== undefined) {
+			modelOptions.temperature = options.temperature;
+		}
+		if (options.maxTokens !== undefined && options.maxTokens !== -1) {
+			modelOptions.maxTokens = options.maxTokens;
+		}
+		if (options.topP !== undefined) {
+			modelOptions.topP = options.topP;
+		}
+
+		// Add OpenAI-specific parameters via modelKwargs to avoid direct parameter conflicts
+		const modelKwargs: any = {};
+		if (options.frequencyPenalty !== undefined && options.frequencyPenalty !== 0) {
+			modelKwargs.frequency_penalty = options.frequencyPenalty;
+		}
+		if (options.presencePenalty !== undefined && options.presencePenalty !== 0) {
+			modelKwargs.presence_penalty = options.presencePenalty;
+		}
+
+		if (Object.keys(modelKwargs).length > 0) {
+			modelOptions.modelKwargs = modelKwargs;
+		}
+
+		const model = new ChatOpenAI(modelOptions);
 
 		return {
 			response: model,
