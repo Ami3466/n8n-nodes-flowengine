@@ -12,13 +12,14 @@ export class FlowEngineLlm implements INodeType {
 	methods = {
 		loadOptions: {
 			async getProviders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const apiKey = process.env.FLOWENGINE_LLM_API_KEY;
+				const manualApiKey = this.getNodeParameter('options.apiKey', 0) as string | undefined;
+				const apiKey = manualApiKey || process.env.FLOWENGINE_LLM_API_KEY;
 
 				if (!apiKey) {
 					return [{
-						name: 'FlowEngine LLM not available',
+						name: 'API Key Required',
 						value: '',
-						description: 'This feature is only available for FlowEngine-hosted n8n instances',
+						description: 'Add API key in Options > API Key (Advanced) or use FlowEngine-hosted instance',
 					}];
 				}
 
@@ -61,13 +62,14 @@ export class FlowEngineLlm implements INodeType {
 			},
 
 			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const apiKey = process.env.FLOWENGINE_LLM_API_KEY;
+				const manualApiKey = this.getNodeParameter('options.apiKey', 0) as string | undefined;
+				const apiKey = manualApiKey || process.env.FLOWENGINE_LLM_API_KEY;
 
 				if (!apiKey) {
 					return [{
-						name: 'FlowEngine LLM not available',
+						name: 'API Key Required',
 						value: '',
-						description: 'This feature is only available for FlowEngine-hosted n8n instances',
+						description: 'Add API key in Options > API Key (Advanced) or use FlowEngine-hosted instance',
 					}];
 				}
 
@@ -179,6 +181,14 @@ export class FlowEngineLlm implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'API Key (Advanced)',
+						name: 'apiKey',
+						type: 'string',
+						typeOptions: { password: true },
+						default: '',
+						description: 'Manually provide FlowEngine LLM API key (only use if environment variable is not set)',
+					},
+					{
 						displayName: 'Frequency Penalty',
 						name: 'frequencyPenalty',
 						default: 0,
@@ -245,18 +255,10 @@ export class FlowEngineLlm implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const apiKey = process.env.FLOWENGINE_LLM_API_KEY;
-
-		if (!apiKey) {
-			throw new Error(
-				'FlowEngine LLM is only available for FlowEngine-hosted n8n instances. ' +
-				'Visit app.flowengine.cloud to get a hosted instance with this feature.',
-			);
-		}
-
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
+			apiKey?: string;
 			frequencyPenalty?: number;
 			maxTokens?: number;
 			maxRetries?: number;
@@ -265,6 +267,17 @@ export class FlowEngineLlm implements INodeType {
 			temperature?: number;
 			topP?: number;
 		};
+
+		// Use manual API key if provided, otherwise use environment variable
+		const apiKey = options.apiKey || process.env.FLOWENGINE_LLM_API_KEY;
+
+		if (!apiKey) {
+			throw new Error(
+				'FlowEngine LLM is only available for FlowEngine-hosted n8n instances. ' +
+				'Visit app.flowengine.cloud to get a hosted instance with this feature. ' +
+				'Alternatively, add your API key in the Options > API Key (Advanced) field.',
+			);
+		}
 
 		const configuration: ClientOptions = {
 			baseURL: 'https://litellm.flowengine.cloud',
