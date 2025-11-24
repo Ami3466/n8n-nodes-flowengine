@@ -205,15 +205,6 @@ export class FlowEngineLlm implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Frequency Penalty',
-						name: 'frequencyPenalty',
-						default: 0,
-						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
-						description:
-							"Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim",
-						type: 'number',
-					},
-					{
 						displayName: 'Maximum Number of Tokens',
 						name: 'maxTokens',
 						default: -1,
@@ -225,15 +216,6 @@ export class FlowEngineLlm implements INodeType {
 						},
 					},
 					{
-						displayName: 'Presence Penalty',
-						name: 'presencePenalty',
-						default: 0,
-						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
-						description:
-							"Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics",
-						type: 'number',
-					},
-					{
 						displayName: 'Sampling Temperature',
 						name: 'temperature',
 						default: 0.7,
@@ -241,6 +223,43 @@ export class FlowEngineLlm implements INodeType {
 						description:
 							'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
 						type: 'number',
+					},
+					{
+						displayName: 'Top P',
+						name: 'topP',
+						default: 1,
+						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
+						description:
+							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered',
+						type: 'number',
+					},
+					{
+						displayName: 'Frequency Penalty',
+						name: 'frequencyPenalty',
+						default: 0,
+						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
+						description:
+							"Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim (OpenAI models only)",
+						type: 'number',
+						displayOptions: {
+							show: {
+								'/provider': ['openai'],
+							},
+						},
+					},
+					{
+						displayName: 'Presence Penalty',
+						name: 'presencePenalty',
+						default: 0,
+						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
+						description:
+							"Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics (OpenAI models only)",
+						type: 'number',
+						displayOptions: {
+							show: {
+								'/provider': ['openai'],
+							},
+						},
 					},
 					{
 						displayName: 'Timeout',
@@ -256,15 +275,6 @@ export class FlowEngineLlm implements INodeType {
 						description: 'Maximum number of retries to attempt',
 						type: 'number',
 					},
-					{
-						displayName: 'Top P',
-						name: 'topP',
-						default: 1,
-						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
-						description:
-							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered',
-						type: 'number',
-					},
 				],
 			},
 		],
@@ -272,6 +282,7 @@ export class FlowEngineLlm implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
+		const provider = this.getNodeParameter('provider', itemIndex) as string;
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			frequencyPenalty?: number;
@@ -331,17 +342,19 @@ export class FlowEngineLlm implements INodeType {
 			modelOptions.topP = options.topP;
 		}
 
-		// Add OpenAI-specific parameters via modelKwargs to avoid direct parameter conflicts
-		const modelKwargs: any = {};
-		if (options.frequencyPenalty !== undefined && options.frequencyPenalty !== 0) {
-			modelKwargs.frequency_penalty = options.frequencyPenalty;
-		}
-		if (options.presencePenalty !== undefined && options.presencePenalty !== 0) {
-			modelKwargs.presence_penalty = options.presencePenalty;
-		}
+		// Only add OpenAI-specific parameters when provider is OpenAI
+		if (provider === 'openai') {
+			const modelKwargs: any = {};
+			if (options.frequencyPenalty !== undefined && options.frequencyPenalty !== 0) {
+				modelKwargs.frequency_penalty = options.frequencyPenalty;
+			}
+			if (options.presencePenalty !== undefined && options.presencePenalty !== 0) {
+				modelKwargs.presence_penalty = options.presencePenalty;
+			}
 
-		if (Object.keys(modelKwargs).length > 0) {
-			modelOptions.modelKwargs = modelKwargs;
+			if (Object.keys(modelKwargs).length > 0) {
+				modelOptions.modelKwargs = modelKwargs;
+			}
 		}
 
 		const model = new ChatOpenAI(modelOptions);
