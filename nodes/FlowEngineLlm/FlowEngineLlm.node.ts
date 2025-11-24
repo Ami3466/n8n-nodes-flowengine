@@ -224,33 +224,6 @@ export class FlowEngineLlm implements INodeType {
 							maxValue: 32768,
 						},
 					},
-					{
-						displayName: 'Top P',
-						name: 'topP',
-						default: 1,
-						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
-						description:
-							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered',
-						type: 'number',
-					},
-					{
-						displayName: 'Frequency Penalty',
-						name: 'frequencyPenalty',
-						default: 0,
-						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
-						description:
-							"Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim",
-						type: 'number',
-					},
-					{
-						displayName: 'Presence Penalty',
-						name: 'presencePenalty',
-						default: 0,
-						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
-						description:
-							"Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics",
-						type: 'number',
-					},
 				],
 			},
 		],
@@ -261,9 +234,6 @@ export class FlowEngineLlm implements INodeType {
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			temperature?: number;
 			maxTokens?: number;
-			topP?: number;
-			frequencyPenalty?: number;
-			presencePenalty?: number;
 		};
 
 		// Try to get API key from credentials first, then fall back to environment variable
@@ -298,9 +268,6 @@ export class FlowEngineLlm implements INodeType {
 			apiKey: apiKey,
 			model: modelName,
 			configuration,
-			// Explicitly set these to undefined to prevent ChatOpenAI from sending default values
-			frequencyPenalty: undefined,
-			presencePenalty: undefined,
 		};
 
 		// Add configured parameters
@@ -309,16 +276,6 @@ export class FlowEngineLlm implements INodeType {
 		}
 		if (options.maxTokens !== undefined && options.maxTokens !== -1) {
 			modelOptions.maxTokens = options.maxTokens;
-		}
-		if (options.topP !== undefined) {
-			modelOptions.topP = options.topP;
-		}
-		// Only set OpenAI-specific params if explicitly configured
-		if (options.frequencyPenalty !== undefined && options.frequencyPenalty !== 0) {
-			modelOptions.frequencyPenalty = options.frequencyPenalty;
-		}
-		if (options.presencePenalty !== undefined && options.presencePenalty !== 0) {
-			modelOptions.presencePenalty = options.presencePenalty;
 		}
 
 		const model = new ChatOpenAI(modelOptions);
