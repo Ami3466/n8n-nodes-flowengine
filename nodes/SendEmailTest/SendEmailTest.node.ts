@@ -125,15 +125,15 @@ async function fetchLatestEmail(etherealAccount: any): Promise<any> {
 
 export class SendEmailTest implements INodeType {
   description: INodeTypeDescription = {
-    displayName: 'Send Email Test',
+    displayName: 'FlowEngine Send Email Test',
     name: 'sendEmailTest',
-    icon: 'fa:envelope',
+    icon: 'file:flowengine.svg',
     group: ['transform'],
     version: 1,
     subtitle: 'Send test email with zero setup',
     description: 'Send a test email with auto-generated credentials (no setup required)',
     defaults: {
-      name: 'Send Email Test',
+      name: 'FlowEngine Send Email Test',
     },
     inputs: ['main'],
     outputs: ['main'],
