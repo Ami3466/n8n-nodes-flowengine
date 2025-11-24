@@ -63,7 +63,7 @@ A LangChain-compatible chat model node that provides access to 100+ AI models fo
 
 **Configuration:**
 - **Provider**: Select a specific AI provider or "All Providers" to see all available models
-- **Model**: Choose from dynamically loaded models based on your LiteLLM configuration
+- **Model**: Choose from dynamically loaded models based on your configuration
 - **Options**:
   - Temperature (0-2): Controls randomness in responses
   - Max Tokens: Maximum length of generated responses
@@ -172,7 +172,7 @@ This allows you to pass data from previous nodes into FlowEngine.
 ### 1.3.0
 
 - Added FlowEngine LLM Chat Model node (LangChain-compatible)
-- Dynamic model and provider loading from LiteLLM API
+- Dynamic model and provider loading
 - Support for 100+ AI models across multiple providers
 - Manual API key option for testing (hidden in Options)
 - Upgraded to TypeScript 5.7

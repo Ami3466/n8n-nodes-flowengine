@@ -173,7 +173,7 @@ export class FlowEngineLlm implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'This node works automatically on FlowEngine-hosted n8n instances (pre-configured, no credentials needed). For testing with your own LiteLLM instance, set up LiteLLM API credentials in Settings > Credentials.',
+				displayName: 'This node works automatically on FlowEngine-hosted n8n instances (pre-configured, no credentials needed). For testing purposes, you can set up API credentials in Settings > Credentials.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
