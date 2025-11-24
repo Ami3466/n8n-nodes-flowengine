@@ -234,34 +234,6 @@ export class FlowEngineLlm implements INodeType {
 						type: 'number',
 					},
 					{
-						displayName: 'Frequency Penalty',
-						name: 'frequencyPenalty',
-						default: 0,
-						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
-						description:
-							"Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim (OpenAI models only)",
-						type: 'number',
-						displayOptions: {
-							show: {
-								'/provider': ['openai'],
-							},
-						},
-					},
-					{
-						displayName: 'Presence Penalty',
-						name: 'presencePenalty',
-						default: 0,
-						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
-						description:
-							"Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics (OpenAI models only)",
-						type: 'number',
-						displayOptions: {
-							show: {
-								'/provider': ['openai'],
-							},
-						},
-					},
-					{
 						displayName: 'Timeout',
 						name: 'timeout',
 						default: 60000,
@@ -282,14 +254,11 @@ export class FlowEngineLlm implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
-		const provider = this.getNodeParameter('provider', itemIndex) as string;
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
-			frequencyPenalty?: number;
 			maxTokens?: number;
 			maxRetries?: number;
 			timeout?: number;
-			presencePenalty?: number;
 			temperature?: number;
 			topP?: number;
 		};
@@ -340,21 +309,6 @@ export class FlowEngineLlm implements INodeType {
 		}
 		if (options.topP !== undefined) {
 			modelOptions.topP = options.topP;
-		}
-
-		// Only add OpenAI-specific parameters when provider is OpenAI
-		if (provider === 'openai') {
-			const modelKwargs: any = {};
-			if (options.frequencyPenalty !== undefined && options.frequencyPenalty !== 0) {
-				modelKwargs.frequency_penalty = options.frequencyPenalty;
-			}
-			if (options.presencePenalty !== undefined && options.presencePenalty !== 0) {
-				modelKwargs.presence_penalty = options.presencePenalty;
-			}
-
-			if (Object.keys(modelKwargs).length > 0) {
-				modelOptions.modelKwargs = modelKwargs;
-			}
 		}
 
 		const model = new ChatOpenAI(modelOptions);
