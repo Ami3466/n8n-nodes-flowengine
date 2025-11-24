@@ -34,10 +34,12 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/FlowEngineApi.credentials.js"
+      "dist/credentials/FlowEngineApi.credentials.js",
+      "dist/credentials/FlowEngineLlmApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/FlowEngine/FlowEngine.node.js"
+      "dist/nodes/FlowEngine/FlowEngine.node.js",
+      "dist/nodes/FlowEngineLlm/FlowEngineLlm.node.js"
     ]
   },
   "devDependencies": {
@@ -46,7 +48,10 @@
     "gulp": "^4.0.2",
     "n8n-workflow": "*",
     "prettier": "^2.7.1",
-    "typescript": "^4.7.4"
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@langchain/openai": "^0.3.14"
   },
   "peerDependencies": {
     "n8n-workflow": "*"
