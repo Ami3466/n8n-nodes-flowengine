@@ -292,6 +292,12 @@ export class FlowEngineLlm implements INodeType {
 
 		const model = new FlowEngineChatOpenAI(modelOptions);
 
+		// Delete OpenAI-specific parameters that other providers don't support
+		// Similar to how n8n's Anthropic node handles unsupported parameters
+		delete (model as any).frequencyPenalty;
+		delete (model as any).presencePenalty;
+		delete (model as any).topP;
+
 		return {
 			response: model,
 		};
