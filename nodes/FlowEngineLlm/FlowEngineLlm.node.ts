@@ -196,7 +196,7 @@ export class FlowEngineLlm implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'If you are hosting on FlowEngine, this node is automatically configured. If self-hosting, go to FlowEngine Settings to get your API key and add it to your FlowEngine API credentials.',
+				displayName: 'Hosting with FlowEngine? No setup needed - it works automatically! Self-hosting? Add your API key from flowengine.cloud/settings',
 				name: 'notice',
 				type: 'notice',
 				default: '',
