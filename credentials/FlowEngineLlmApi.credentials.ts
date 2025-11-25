@@ -22,12 +22,6 @@ export class FlowEngineLlmApi implements ICredentialType {
 			default: '',
 			description: 'Your FlowEngine API key. Get it from FlowEngine Settings > API Access.',
 		},
-		{
-			displayName: 'Base URL',
-			name: 'url',
-			type: 'hidden',
-			default: 'https://litellm.flowengine.cloud',
-		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -41,8 +35,8 @@ export class FlowEngineLlmApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{ $credentials.url }}',
-			url: '/v1/models',
+			baseURL: 'https://flowengine.cloud',
+			url: '/api/v1/litellm/models',
 		},
 	};
 }
