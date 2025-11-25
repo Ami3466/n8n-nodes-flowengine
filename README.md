@@ -3,9 +3,9 @@
 **FlowEngine AI + Email Testing** - Powerful AI automation nodes for n8n workflows.
 
 This community node package provides:
-- **FlowEngine AI Chat** - Conversational AI with workflow intelligence
-- **FlowEngine LLM** - 100+ AI models (OpenAI, Anthropic, Google, Mistral, etc.) via LangChain
-- **Send Email Test** - Zero-setup email testing with embedded content (NEW!)
+- **FlowEngine AI Chat** - Build complete, validated workflows from plain text
+- **FlowEngine LLM Chat Model** - Use all AI models with one API key from FlowEngine (pre-configured for FlowEngine-hosted n8n)
+- **Send Email Test** - Free zero-setup email testing, no API key needed
 
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/reference/license/) workflow automation platform.
 
@@ -39,11 +39,11 @@ RUN cd /usr/local/lib/node_modules/n8n && npm install n8n-nodes-flowengine
 
 This package includes **3 powerful nodes**:
 
-### 1. Send Email Test (NEW!)
+### 1. Send Email Test
 
-**Zero-setup email testing with embedded content** - No SMTP configuration required!
+**Free zero-setup email testing** - No API key or SMTP configuration required!
 
-Send test emails and instantly get the full email content embedded in the n8n output. Perfect for testing email workflows, templates, and automation.
+Send test emails and instantly get the full email content embedded in the n8n output. Perfect for testing email workflows, templates, and automation without any setup.
 
 **Features:**
 - ✅ **No Setup Required** - Auto-generates test email accounts via Ethereal.email
@@ -91,46 +91,54 @@ Send test emails and instantly get the full email content embedded in the n8n ou
 
 ---
 
-### 2. FlowEngine (AI Chat Node)
+### 2. FlowEngine AI Chat
 
-Send messages to FlowEngine AI and get intelligent responses for workflow automation.
+**Build complete, validated workflows from plain text** - Describe what you want and get ready-to-use n8n workflows.
+
+Turn natural language descriptions into fully functional n8n workflows with intelligent validation and optimization.
 
 **Parameters:**
-- **Message**: The message/prompt to send to FlowEngine AI
+- **Message**: Describe the workflow you want to create in plain text
 - **Model**: Choose between Regular (faster, standard) or Boost (more powerful)
-- **Conversation ID** (optional): Continue an existing conversation
+- **Conversation ID** (optional): Continue an existing conversation for iterative refinement
 
 **Returns:**
 - `success`: Whether the request was successful
-- `response`: The AI's response
+- `response`: Complete workflow JSON or guidance
 - `conversation_id`: ID to continue the conversation
 - `credits_remaining`: Your remaining FlowEngine credits
 
+**Use Cases:**
+- Generate workflows from descriptions: "Create a workflow that sends daily email reports"
+- Validate and optimize existing workflows
+- Get AI assistance for complex automation logic
+- Iterate on workflows with conversational refinement
+
 ---
 
-### 3. FlowEngine LLM Chat Model (LangChain Node)
+### 3. FlowEngine LLM Chat Model
 
-A LangChain-compatible chat model node that provides access to **100+ AI models** for use with n8n's AI Agent, Chain, and other LangChain nodes.
+**Use all AI models with one API key from FlowEngine** - Access 100+ models from OpenAI, Anthropic, Google, Mistral, and more.
+
+Pre-configured for FlowEngine-hosted n8n instances with zero setup. Self-hosted users can connect with a single FlowEngine API key.
 
 **Features:**
-- **Dynamic Model Loading**: Automatically fetches available models from your FlowEngine LLM configuration
-- **Multiple Providers**: Access models from OpenAI, Anthropic, Google, Mistral, Groq, Cohere, and more
+- **One API Key, All Models**: Single FlowEngine API key unlocks 100+ AI models
+- **Multiple Providers**: OpenAI (GPT-4, GPT-4o), Anthropic (Claude), Google (Gemini), Mistral, Groq, Cohere, and more
 - **Provider Filtering**: Filter models by provider or view all available models
-- **LangChain Compatible**: Works with AI Agent, Basic LLM Chain, Summarization Chain, and other LangChain nodes
+- **Dynamic Model Loading**: Automatically fetches and updates available models
+- **LangChain Compatible**: Works seamlessly with AI Agent, chains, and other LangChain nodes
 
 **Configuration:**
 - **Provider**: Select a specific AI provider or "All Providers" to see all available models
-- **Model**: Choose from dynamically loaded models based on your configuration
+- **Model**: Choose from dynamically loaded models (updated in real-time)
 - **Options**:
   - Temperature (0-2): Controls randomness in responses
   - Max Tokens: Maximum length of generated responses
-  - Frequency/Presence Penalty: Reduce repetition (OpenAI-compatible models)
-  - Top P: Alternative to temperature for controlling randomness
-  - Timeout & Max Retries: Connection settings
 
 **Availability:**
-- **FlowEngine-Hosted Instances**: Automatically enabled with pre-configured API access
-- **Self-Hosted**: Get your API key from FlowEngine Settings and add it to FlowEngine API credentials
+- **FlowEngine-Hosted n8n**: Automatically pre-configured, no credentials needed
+- **Self-Hosted n8n**: Add your FlowEngine API key from Settings > API Access
 
 **Use Cases:**
 - Build AI agents with tools and memory

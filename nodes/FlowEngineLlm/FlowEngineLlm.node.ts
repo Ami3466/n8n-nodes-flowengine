@@ -25,16 +25,31 @@ export class FlowEngineLlm implements INodeType {
 	methods = {
 		loadOptions: {
 			async getProviders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				// Try to get API key from credentials first, then fall back to environment variable
+				// Try environment variable first (direct LiteLLM key for hosted users), then credentials
 				let apiKey = process.env.FLOWENGINE_LLM_API_KEY;
 
-				try {
-					const credentials = await this.getCredentials('flowEngineApi');
-					if (credentials?.apiKey) {
-						apiKey = credentials.apiKey as string;
+				if (!apiKey) {
+					// Try flowEngineLlmApi credentials (direct LiteLLM keys)
+					try {
+						const credentials = await this.getCredentials('flowEngineLlmApi');
+						if (credentials?.apiKey) {
+							apiKey = credentials.apiKey as string;
+						}
+					} catch (error) {
+						// Credentials not set
 					}
-				} catch (error) {
-					// Credentials not set, use environment variable
+				}
+
+				if (!apiKey) {
+					// Fallback to flowEngineApi credentials (FlowEngine API keys)
+					try {
+						const credentials = await this.getCredentials('flowEngineApi');
+						if (credentials?.apiKey) {
+							apiKey = credentials.apiKey as string;
+						}
+					} catch (error) {
+						// Credentials not set
+					}
 				}
 
 				if (!apiKey) {
@@ -45,10 +60,16 @@ export class FlowEngineLlm implements INodeType {
 					}];
 				}
 
+				// Detect key type: FlowEngine API keys start with 'fe_', LiteLLM keys start with 'sk-'
+				const isFlowEngineKey = apiKey.startsWith('fe_');
+				const url = isFlowEngineKey
+					? 'https://flowengine.cloud/api/v1/litellm/models'
+					: 'https://litellm.flowengine.cloud/model/info';
+
 				try {
 					const response = await this.helpers.request({
 						method: 'GET',
-						url: 'https://litellm.flowengine.cloud/model/info',
+						url,
 						headers: { 'Authorization': `Bearer ${apiKey}` },
 						json: true,
 					});
@@ -84,16 +105,31 @@ export class FlowEngineLlm implements INodeType {
 			},
 
 			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				// Try to get API key from credentials first, then fall back to environment variable
+				// Try environment variable first (direct LiteLLM key for hosted users), then credentials
 				let apiKey = process.env.FLOWENGINE_LLM_API_KEY;
 
-				try {
-					const credentials = await this.getCredentials('flowEngineApi');
-					if (credentials?.apiKey) {
-						apiKey = credentials.apiKey as string;
+				if (!apiKey) {
+					// Try flowEngineLlmApi credentials (direct LiteLLM keys)
+					try {
+						const credentials = await this.getCredentials('flowEngineLlmApi');
+						if (credentials?.apiKey) {
+							apiKey = credentials.apiKey as string;
+						}
+					} catch (error) {
+						// Credentials not set
 					}
-				} catch (error) {
-					// Credentials not set, use environment variable
+				}
+
+				if (!apiKey) {
+					// Fallback to flowEngineApi credentials (FlowEngine API keys)
+					try {
+						const credentials = await this.getCredentials('flowEngineApi');
+						if (credentials?.apiKey) {
+							apiKey = credentials.apiKey as string;
+						}
+					} catch (error) {
+						// Credentials not set
+					}
 				}
 
 				if (!apiKey) {
@@ -106,10 +142,16 @@ export class FlowEngineLlm implements INodeType {
 
 				const provider = this.getCurrentNodeParameter('provider') as string;
 
+				// Detect key type: FlowEngine API keys start with 'fe_', LiteLLM keys start with 'sk-'
+				const isFlowEngineKey = apiKey.startsWith('fe_');
+				const url = isFlowEngineKey
+					? 'https://flowengine.cloud/api/v1/litellm/models'
+					: 'https://litellm.flowengine.cloud/model/info';
+
 				try {
 					const response = await this.helpers.request({
 						method: 'GET',
-						url: 'https://litellm.flowengine.cloud/model/info',
+						url,
 						headers: { 'Authorization': `Bearer ${apiKey}` },
 						json: true,
 					});
@@ -172,13 +214,12 @@ export class FlowEngineLlm implements INodeType {
 		outputNames: ['Model'],
 		credentials: [
 			{
+				name: 'flowEngineLlmApi',
+				required: false,
+			},
+			{
 				name: 'flowEngineApi',
 				required: false,
-				displayOptions: {
-					show: {
-						'@version': [1],
-					},
-				},
 			},
 		],
 		properties: [
@@ -250,16 +291,31 @@ export class FlowEngineLlm implements INodeType {
 			maxTokens?: number;
 		};
 
-		// Try to get API key from credentials first, then fall back to environment variable
+		// Try environment variable first (direct LiteLLM key for hosted users), then credentials
 		let apiKey = process.env.FLOWENGINE_LLM_API_KEY;
 
-		try {
-			const credentials = await this.getCredentials('flowEngineApi');
-			if (credentials?.apiKey) {
-				apiKey = credentials.apiKey as string;
+		if (!apiKey) {
+			// Try flowEngineLlmApi credentials (direct LiteLLM keys)
+			try {
+				const credentials = await this.getCredentials('flowEngineLlmApi');
+				if (credentials?.apiKey) {
+					apiKey = credentials.apiKey as string;
+				}
+			} catch (error) {
+				// Credentials not set
 			}
-		} catch (error) {
-			// Credentials not set, use environment variable
+		}
+
+		if (!apiKey) {
+			// Fallback to flowEngineApi credentials (FlowEngine API keys)
+			try {
+				const credentials = await this.getCredentials('flowEngineApi');
+				if (credentials?.apiKey) {
+					apiKey = credentials.apiKey as string;
+				}
+			} catch (error) {
+				// Credentials not set
+			}
 		}
 
 		if (!apiKey) {
@@ -269,8 +325,14 @@ export class FlowEngineLlm implements INodeType {
 			);
 		}
 
+		// Detect key type: FlowEngine API keys start with 'fe_', LiteLLM keys start with 'sk-'
+		const isFlowEngineKey = apiKey.startsWith('fe_');
+		const baseURL = isFlowEngineKey
+			? 'https://flowengine.cloud/api/v1/litellm'
+			: 'https://litellm.flowengine.cloud';
+
 		const configuration: ClientOptions = {
-			baseURL: 'https://litellm.flowengine.cloud',
+			baseURL,
 			defaultHeaders: {
 				'HTTP-Referer': 'https://flowengine.cloud',
 				'X-Title': 'FlowEngine n8n',
