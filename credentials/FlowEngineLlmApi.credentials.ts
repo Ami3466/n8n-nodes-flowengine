@@ -8,34 +8,11 @@ import type {
 export class FlowEngineLlmApi implements ICredentialType {
 	name = 'flowEngineLlmApi';
 
-	displayName = 'FlowEngine LLM API (Testing Only)';
+	displayName = 'FlowEngine LLM API';
 
 	documentationUrl = 'flowengine';
 
 	properties: INodeProperties[] = [
-		{
-			displayName: 'Notice',
-			name: 'notice',
-			type: 'notice',
-			default: '',
-			displayOptions: {
-				show: {
-					'@version': [1],
-				},
-			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-			description:
-				'⚠️ FOR TESTING ONLY - FlowEngine-hosted n8n instances are pre-configured automatically. Only use these credentials if testing with your own instance.',
-		},
-		{
-			displayName: 'Master Key',
-			name: 'masterKey',
-			type: 'string',
-			typeOptions: { password: true },
-			required: false,
-			default: '',
-			description: 'Master key (for admin operations like creating virtual keys)',
-		},
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
@@ -43,7 +20,7 @@ export class FlowEngineLlmApi implements ICredentialType {
 			typeOptions: { password: true },
 			required: true,
 			default: '',
-			description: 'User/virtual key (for making API calls to models)',
+			description: 'Your FlowEngine API key. Get it from FlowEngine Settings > API Access.',
 		},
 		{
 			displayName: 'Base URL',

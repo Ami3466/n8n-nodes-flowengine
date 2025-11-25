@@ -25,25 +25,13 @@ export class FlowEngineLlm implements INodeType {
 	methods = {
 		loadOptions: {
 			async getProviders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				// Try environment variable first (direct LiteLLM key for hosted users), then credentials
+				// Try environment variable first (for hosted users), then credentials
 				let apiKey = process.env.FLOWENGINE_LLM_API_KEY;
 
 				if (!apiKey) {
-					// Try flowEngineLlmApi credentials (direct LiteLLM keys)
+					// Get API key from credentials (accepts both FlowEngine and LiteLLM keys)
 					try {
 						const credentials = await this.getCredentials('flowEngineLlmApi');
-						if (credentials?.apiKey) {
-							apiKey = credentials.apiKey as string;
-						}
-					} catch (error) {
-						// Credentials not set
-					}
-				}
-
-				if (!apiKey) {
-					// Fallback to flowEngineApi credentials (FlowEngine API keys)
-					try {
-						const credentials = await this.getCredentials('flowEngineApi');
 						if (credentials?.apiKey) {
 							apiKey = credentials.apiKey as string;
 						}
@@ -105,25 +93,13 @@ export class FlowEngineLlm implements INodeType {
 			},
 
 			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				// Try environment variable first (direct LiteLLM key for hosted users), then credentials
+				// Try environment variable first (for hosted users), then credentials
 				let apiKey = process.env.FLOWENGINE_LLM_API_KEY;
 
 				if (!apiKey) {
-					// Try flowEngineLlmApi credentials (direct LiteLLM keys)
+					// Get API key from credentials (accepts both FlowEngine and LiteLLM keys)
 					try {
 						const credentials = await this.getCredentials('flowEngineLlmApi');
-						if (credentials?.apiKey) {
-							apiKey = credentials.apiKey as string;
-						}
-					} catch (error) {
-						// Credentials not set
-					}
-				}
-
-				if (!apiKey) {
-					// Fallback to flowEngineApi credentials (FlowEngine API keys)
-					try {
-						const credentials = await this.getCredentials('flowEngineApi');
 						if (credentials?.apiKey) {
 							apiKey = credentials.apiKey as string;
 						}
@@ -217,10 +193,6 @@ export class FlowEngineLlm implements INodeType {
 				name: 'flowEngineLlmApi',
 				required: false,
 			},
-			{
-				name: 'flowEngineApi',
-				required: false,
-			},
 		],
 		properties: [
 			{
@@ -291,25 +263,13 @@ export class FlowEngineLlm implements INodeType {
 			maxTokens?: number;
 		};
 
-		// Try environment variable first (direct LiteLLM key for hosted users), then credentials
+		// Try environment variable first (for hosted users), then credentials
 		let apiKey = process.env.FLOWENGINE_LLM_API_KEY;
 
 		if (!apiKey) {
-			// Try flowEngineLlmApi credentials (direct LiteLLM keys)
+			// Get API key from credentials (accepts both FlowEngine and LiteLLM keys)
 			try {
 				const credentials = await this.getCredentials('flowEngineLlmApi');
-				if (credentials?.apiKey) {
-					apiKey = credentials.apiKey as string;
-				}
-			} catch (error) {
-				// Credentials not set
-			}
-		}
-
-		if (!apiKey) {
-			// Fallback to flowEngineApi credentials (FlowEngine API keys)
-			try {
-				const credentials = await this.getCredentials('flowEngineApi');
 				if (credentials?.apiKey) {
 					apiKey = credentials.apiKey as string;
 				}
