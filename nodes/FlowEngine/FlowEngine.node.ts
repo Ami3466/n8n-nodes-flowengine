@@ -30,6 +30,12 @@ export class FlowEngine implements INodeType {
     ],
     properties: [
       {
+        displayName: '<a href="https://flowengine.cloud/settings" target="_blank">Get your API key here</a>',
+        name: 'notice',
+        type: 'notice',
+        default: '',
+      },
+      {
         displayName: 'Operation',
         name: 'operation',
         type: 'options',
