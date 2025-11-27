@@ -1,4 +1,4 @@
-import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import { ChatOpenAI } from '@langchain/openai';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -295,12 +295,14 @@ export class FlowEngineLlm implements INodeType {
 			apiKey: apiKey,
 			model: modelName,
 			configuration: {
-				baseURL: baseURL,
-				defaultHeaders: {
-					'HTTP-Referer': 'https://flowengine.cloud',
-					'X-Title': 'FlowEngine n8n',
+				basePath: baseURL,
+				baseOptions: {
+					headers: {
+						'HTTP-Referer': 'https://flowengine.cloud',
+						'X-Title': 'FlowEngine n8n',
+					},
 				},
-			} as ClientOptions,
+			},
 		};
 
 		// Add configured parameters
