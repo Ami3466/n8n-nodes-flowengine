@@ -196,7 +196,7 @@ export class FlowEngineLlm implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Hosting with FlowEngine? No setup needed - it works automatically! Self-hosting? Add your API key from flowengine.cloud/settings',
+				displayName: 'Hosting with FlowEngine? No setup needed - it works automatically! Self-hosting and free FlowEngine users? Add your API key from flowengine.cloud/settings. Free LLM models are available only to paid users (hosting/pro users) - to start go to https://flowengine.cloud/#pricing',
 				name: 'notice',
 				type: 'notice',
 				default: '',
