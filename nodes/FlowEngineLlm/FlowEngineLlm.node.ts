@@ -291,18 +291,16 @@ export class FlowEngineLlm implements INodeType {
 			? 'https://flowengine.cloud/api/v1/litellm'
 			: 'https://litellm.flowengine.cloud';
 
-		const configuration: ClientOptions = {
-			baseURL,
-			defaultHeaders: {
-				'HTTP-Referer': 'https://flowengine.cloud',
-				'X-Title': 'FlowEngine n8n',
-			},
-		};
-
 		const modelOptions: any = {
 			apiKey: apiKey,
 			model: modelName,
-			configuration,
+			configuration: {
+				baseURL: baseURL,
+				defaultHeaders: {
+					'HTTP-Referer': 'https://flowengine.cloud',
+					'X-Title': 'FlowEngine n8n',
+				},
+			} as ClientOptions,
 		};
 
 		// Add configured parameters
