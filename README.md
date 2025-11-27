@@ -1,6 +1,6 @@
 # n8n-nodes-flowengine
 
-**FlowEngine — Simplifying n8n** - Making workflow automation easier with AI-powered tools and zero-config utilities.
+**FlowEngine — Simplifying n8n** - Making workflow automation easier with AI-powered tools.
 
 This package provides:
 - **FlowEngine AI workflow builder** - Build complete, validated workflows from plain text
