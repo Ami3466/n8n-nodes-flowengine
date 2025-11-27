@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-flowengine",
-  "version": "1.7.9",
+  "version": "1.7.10",
   "description": "n8n nodes for FlowEngine AI + Zero-Setup Email Testing - AI automation and email testing made easy",
   "keywords": [
     "n8n-community-node-package",
@@ -33,7 +33,8 @@
     "format": "prettier nodes credentials --write",
     "lint": "eslint nodes credentials package.json",
     "lintfix": "eslint nodes credentials package.json --fix",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "postinstall": "rm -rf node_modules/imapflow/test node_modules/imapflow/examples 2>/dev/null || true"
   },
   "files": [
     "dist"
