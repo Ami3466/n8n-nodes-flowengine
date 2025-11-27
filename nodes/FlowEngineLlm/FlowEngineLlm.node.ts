@@ -294,6 +294,14 @@ export class FlowEngineLlm implements INodeType {
 		const modelOptions: any = {
 			openAIApiKey: apiKey,
 			modelName: modelName,
+			configuration: {
+				baseURL: baseURL,
+				defaultHeaders: {
+					'User-Agent': 'FlowEngine-n8n/1.0',
+					'HTTP-Referer': 'https://flowengine.cloud',
+					'X-Title': 'FlowEngine n8n',
+				},
+			},
 		};
 
 		// Add configured parameters
@@ -305,16 +313,6 @@ export class FlowEngineLlm implements INodeType {
 		}
 
 		const model = new FlowEngineChatOpenAI(modelOptions);
-
-		// Force set the clientConfig baseURL after instantiation
-		(model as any).clientConfig = {
-			...(model as any).clientConfig,
-			baseURL: baseURL,
-			defaultHeaders: {
-				'HTTP-Referer': 'https://flowengine.cloud',
-				'X-Title': 'FlowEngine n8n',
-			},
-		};
 
 		// Delete OpenAI-specific parameters that other providers don't support
 		delete (model as any).frequencyPenalty;
