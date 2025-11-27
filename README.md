@@ -1,9 +1,9 @@
 # n8n-nodes-flowengine
 
-**FlowEngine AI + Email Testing** - Powerful AI automation nodes for n8n workflows.
+**FlowEngine — Simplifying n8n** - Making workflow automation easier with AI-powered tools and zero-config utilities.
 
-This community node package provides:
-- **FlowEngine AI Chat** - Build complete, validated workflows from plain text
+This package provides:
+- **FlowEngine AI workflow builder** - Build complete, validated workflows from plain text
 - **FlowEngine LLM Chat Model** - Use all AI models with one API key from FlowEngine (pre-configured for FlowEngine-hosted n8n)
 - **Send Email Test** - Free zero-setup email testing, no API key needed
 
@@ -91,7 +91,7 @@ Send test emails and instantly get the full email content embedded in the n8n ou
 
 ---
 
-### 2. FlowEngine AI Chat
+### 2. FlowEngine AI Workflow Builder
 
 **Build complete, validated workflows from plain text** - Describe what you want and get ready-to-use n8n workflows.
 
@@ -118,13 +118,13 @@ Turn natural language descriptions into fully functional n8n workflows with inte
 
 ### 3. FlowEngine LLM Chat Model
 
-**Use all AI models with one API key from FlowEngine** - Access 100+ models from OpenAI, Anthropic, Google, Mistral, and more.
+**Use all AI models with one API key from FlowEngine** - Access 50+ LLMs from OpenAI, Anthropic, Google, Mistral, and more.
 
 Pre-configured for FlowEngine-hosted n8n instances with zero setup. Self-hosted users can connect with a single FlowEngine API key.
 
 **Features:**
-- **One API Key, All Models**: Single FlowEngine API key unlocks 100+ AI models
-- **Multiple Providers**: OpenAI (GPT-4, GPT-4o), Anthropic (Claude), Google (Gemini), Mistral, Groq, Cohere, and more
+- **One API Key, All Models**: Single FlowEngine API key unlocks 50+ LLMs, including 10 free open-source LLMs for FlowEngine hosted users
+- **Multiple Providers**: OpenAI, Anthropic (Claude), Google (Gemini), Mistral, Groq, Cohere, and more
 - **Provider Filtering**: Filter models by provider or view all available models
 - **Dynamic Model Loading**: Automatically fetches and updates available models
 - **LangChain Compatible**: Works seamlessly with AI Agent, chains, and other LangChain nodes
