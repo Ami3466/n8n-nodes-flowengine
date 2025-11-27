@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-flowengine",
-  "version": "1.7.12",
+  "version": "1.7.13",
   "description": "n8n nodes for FlowEngine AI + Zero-Setup Email Testing - AI automation and email testing made easy",
   "keywords": [
     "n8n-community-node-package",

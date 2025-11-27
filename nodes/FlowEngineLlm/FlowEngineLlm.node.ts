@@ -292,17 +292,8 @@ export class FlowEngineLlm implements INodeType {
 			: 'https://litellm.flowengine.cloud';
 
 		const modelOptions: any = {
-			apiKey: apiKey,
-			model: modelName,
-			configuration: {
-				basePath: baseURL,
-				baseOptions: {
-					headers: {
-						'HTTP-Referer': 'https://flowengine.cloud',
-						'X-Title': 'FlowEngine n8n',
-					},
-				},
-			},
+			openAIApiKey: apiKey,
+			modelName: modelName,
 		};
 
 		// Add configured parameters
@@ -315,8 +306,17 @@ export class FlowEngineLlm implements INodeType {
 
 		const model = new FlowEngineChatOpenAI(modelOptions);
 
+		// Force set the clientConfig baseURL after instantiation
+		(model as any).clientConfig = {
+			...(model as any).clientConfig,
+			baseURL: baseURL,
+			defaultHeaders: {
+				'HTTP-Referer': 'https://flowengine.cloud',
+				'X-Title': 'FlowEngine n8n',
+			},
+		};
+
 		// Delete OpenAI-specific parameters that other providers don't support
-		// Similar to how n8n's Anthropic node handles unsupported parameters
 		delete (model as any).frequencyPenalty;
 		delete (model as any).presencePenalty;
 		delete (model as any).topP;
