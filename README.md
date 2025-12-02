@@ -5,8 +5,8 @@
 This package provides:
 - **FlowEngine AI workflow builder** - Build complete, validated workflows from plain text
 - **FlowEngine LLM Chat Model** - Use all AI models with one API key from FlowEngine (pre-configured for FlowEngine-hosted n8n)
-- **AI Session Manager** - The missing link for AI Agent setup - generate and manage session IDs effortlessly
-- **Data Cleaner** - Clean and transform data without code - deduplicate, format phones, normalize emails, and more
+- **FlowEngine Session ID** - The missing link for AI Agent setup - generate and manage session IDs effortlessly
+- **FlowEngine Data Standardize & Clean** - Clean and transform data without code - deduplicate, format phones, normalize emails, and more
 - **Send Email Test** - Free zero-setup email testing, no API key needed
 
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/reference/license/) workflow automation platform.
@@ -151,7 +151,7 @@ Pre-configured for FlowEngine-hosted n8n instances with zero setup. Self-hosted 
 
 ---
 
-### 4. AI Session Manager
+### 4. FlowEngine Session ID
 
 **The Missing Link for AI Agent Setup** - No more Code nodes or complex expressions just to get a session ID!
 
@@ -193,17 +193,17 @@ Persists one session ID across multiple loop iterations using `getWorkflowStatic
 
 Basic AI Agent Setup:
 ```
-[Trigger] → [AI Session Manager] → [AI Agent with Memory]
+[Trigger] → [FlowEngine Session ID] → [AI Agent with Memory]
 ```
 
 Loop with Persistent Memory:
 ```
-[Trigger] → [Split In Batches] → [AI Session Manager (Manage Loop)] → [AI Agent] → [Loop]
+[Trigger] → [Split In Batches] → [FlowEngine Session ID (Manage Loop)] → [AI Agent] → [Loop]
 ```
 
 ---
 
-### 5. Data Cleaner
+### 5. FlowEngine Data Standardize & Clean
 
 **Stop writing Code Nodes to clean your data. Use this.**
 
@@ -366,12 +366,12 @@ This allows you to pass data from previous nodes into FlowEngine.
 
 ---
 
-### AI Session Manager Node Examples
+### FlowEngine Session ID Node Examples
 
 #### Example: Quick AI Agent Setup
 
 1. Add a **Trigger** node (Manual, Webhook, etc.)
-2. Add an **AI Session Manager** node
+2. Add a **FlowEngine Session ID** node
 3. Set **Mode**: Generate New ID
 4. Add an **AI Agent** node
 5. In the AI Agent, set **Session ID** to: `{{ $json.sessionId }}`
@@ -383,7 +383,7 @@ When processing multiple items where the AI needs to remember previous iteration
 
 1. **Trigger** node with multiple items
 2. **Split In Batches** node (batch size 1)
-3. **AI Session Manager** node
+3. **FlowEngine Session ID** node
    - Mode: `Manage Loop Session`
    - Session Key: `customerSupportSession`
 4. **AI Agent** node using `{{ $json.sessionId }}`
@@ -395,17 +395,17 @@ The AI will maintain conversation context across all items in the loop.
 
 For workflows handling multiple independent conversations:
 
-1. Add multiple **AI Session Manager** nodes
+1. Add multiple **FlowEngine Session ID** nodes
 2. Set different **Session Keys** for each (e.g., `agent1Session`, `agent2Session`)
 3. Each AI Agent gets its own persistent session
 
 ---
 
-### Data Cleaner Node Examples
+### FlowEngine Data Standardize & Clean Node Examples
 
 #### Example: Clean Contact List
 
-1. Add a **Data Cleaner** node
+1. Add a **FlowEngine Data Standardize & Clean** node
 2. Set **Operation**: Deduplicate (Fuzzy)
 3. **Fields to Check**: `name, email`
 4. **Fuzzy Threshold**: `0.8`
@@ -413,7 +413,7 @@ For workflows handling multiple independent conversations:
 
 #### Example: Format Phone Numbers
 
-1. Add a **Data Cleaner** node
+1. Add a **FlowEngine Data Standardize & Clean** node
 2. Set **Operation**: Clean Phone Numbers
 3. **Phone Field**: `phone`
 4. **Default Country Code**: `1`
@@ -421,7 +421,7 @@ For workflows handling multiple independent conversations:
 
 #### Example: Normalize API Response
 
-1. Add a **Data Cleaner** node
+1. Add a **FlowEngine Data Standardize & Clean** node
 2. Set **Operation**: Clean Object Keys
 3. **Key Format**: `snake_case`
 4. Input: `{ "firstName": "John", "lastName": "Doe" }`
@@ -435,14 +435,20 @@ For workflows handling multiple independent conversations:
 
 ## Version history
 
-### 1.9.1 (Latest)
+### 1.9.2 (Latest)
 
-- Build and packaging fixes for AI Session Manager and Data Cleaner nodes
+- Renamed nodes for better clarity:
+  - "FlowEngine Session ID" - Generate and manage session IDs for AI Agents
+  - "FlowEngine Data Standardize & Clean" - Clean and transform data without code
+
+### 1.9.1
+
+- Build and packaging fixes for FlowEngine Session ID and FlowEngine Data Standardize & Clean nodes
 - Verified all node exports and configurations
 
 ### 1.9.0
 
-- **NEW: Data Cleaner Node** - Clean and transform data without code
+- **NEW: FlowEngine Data Standardize & Clean Node** - Clean and transform data without code
   - Deduplicate (Fuzzy): Remove duplicates using Jaro-Winkler/Levenshtein algorithms
   - Clean Phone Numbers: Format to E.164 standard (+15550001111)
   - Smart Capitalization: Intelligent Title Case conversion
@@ -453,7 +459,7 @@ For workflows handling multiple independent conversations:
 
 ### 1.8.0
 
-- **NEW: AI Session Manager Node** - The missing link for AI Agent setup
+- **NEW: FlowEngine Session ID Node** - The missing link for AI Agent setup
   - Generate UUID v4 session IDs with zero configuration
   - Manage Loop Session mode for persistent sessions across loop iterations
   - Solves the "Loop Amnesia" problem with `getWorkflowStaticData`

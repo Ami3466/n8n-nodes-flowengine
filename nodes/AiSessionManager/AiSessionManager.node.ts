@@ -9,7 +9,7 @@ import {
 
 export class AiSessionManager implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'AI Session Manager',
+		displayName: 'FlowEngine Session ID',
 		name: 'aiSessionManager',
 		icon: 'file:flowengine.svg',
 		group: ['transform'],
@@ -17,7 +17,7 @@ export class AiSessionManager implements INodeType {
 		subtitle: '={{$parameter["mode"]}}',
 		description: 'Generates or manages Session IDs for AI Agents. The missing link for AI Agent setup.',
 		defaults: {
-			name: 'AI Session Manager',
+			name: 'FlowEngine Session ID',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -34,7 +34,7 @@ import {
  */
 export class DataCleaner implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Data Cleaner',
+		displayName: 'FlowEngine Data Standardize & Clean',
 		name: 'dataCleaner',
 		icon: 'file:flowengine.svg',
 		group: ['transform'],
@@ -42,7 +42,7 @@ export class DataCleaner implements INodeType {
 		subtitle: '={{$parameter["operation"]}}',
 		description: 'Clean and transform data without code - deduplicate, format phones, normalize emails, and more',
 		defaults: {
-			name: 'Data Cleaner',
+			name: 'FlowEngine Data Standardize & Clean',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
