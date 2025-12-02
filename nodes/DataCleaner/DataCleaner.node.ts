@@ -34,6 +34,98 @@ import {
 } from './utils';
 
 /**
+ * Represents a single change made during data transformation
+ */
+interface ChangeRecord {
+	field: string;
+	before: unknown;
+	after: unknown;
+	operation: string;
+	status?: 'changed' | 'skipped' | 'error';
+	reason?: string;
+}
+
+/**
+ * Deep clones an object to avoid mutation issues
+ */
+function deepClone<T>(obj: T): T {
+	if (obj === null || typeof obj !== 'object') {
+		return obj;
+	}
+	if (obj instanceof Date) {
+		return new Date(obj.getTime()) as unknown as T;
+	}
+	if (Array.isArray(obj)) {
+		return obj.map(item => deepClone(item)) as unknown as T;
+	}
+	const cloned: Record<string, unknown> = {};
+	for (const key of Object.keys(obj as Record<string, unknown>)) {
+		cloned[key] = deepClone((obj as Record<string, unknown>)[key]);
+	}
+	return cloned as T;
+}
+
+/**
+ * Finds the actual field name in an object, optionally using case-insensitive matching.
+ * Returns the actual key name if found, or undefined if not found.
+ */
+function findFieldName(obj: IDataObject, fieldName: string, caseInsensitive: boolean): string | undefined {
+	// First try exact match
+	if (fieldName in obj) {
+		return fieldName;
+	}
+
+	// If case insensitive, try to find a matching key
+	if (caseInsensitive) {
+		const lowerFieldName = fieldName.toLowerCase();
+		for (const key of Object.keys(obj)) {
+			if (key.toLowerCase() === lowerFieldName) {
+				return key;
+			}
+		}
+	}
+
+	return undefined;
+}
+
+/**
+ * Gets a value from an object with optional case-insensitive field matching.
+ * Returns { value, actualFieldName } or { value: undefined, actualFieldName: undefined }
+ */
+function getFieldValue(obj: IDataObject, fieldName: string, caseInsensitive: boolean): { value: unknown; actualFieldName: string | undefined } {
+	// Handle nested properties (with dot notation)
+	if (fieldName.includes('.')) {
+		const parts = fieldName.split('.');
+		let current: unknown = obj;
+		const actualParts: string[] = [];
+
+		for (const part of parts) {
+			if (current === null || typeof current !== 'object') {
+				return { value: undefined, actualFieldName: undefined };
+			}
+
+			const actualKey = findFieldName(current as IDataObject, part, caseInsensitive);
+			if (actualKey === undefined) {
+				return { value: undefined, actualFieldName: undefined };
+			}
+
+			actualParts.push(actualKey);
+			current = (current as IDataObject)[actualKey];
+		}
+
+		return { value: current, actualFieldName: actualParts.join('.') };
+	}
+
+	// Handle simple field names
+	const actualFieldName = findFieldName(obj, fieldName, caseInsensitive);
+	if (actualFieldName === undefined) {
+		return { value: undefined, actualFieldName: undefined };
+	}
+
+	return { value: obj[actualFieldName], actualFieldName };
+}
+
+/**
  * DataCleaner Node for n8n
  *
  * A production-ready community node that cleans and transforms data without code.
@@ -822,6 +914,54 @@ export class DataCleaner implements INodeType {
 				placeholder: '0',
 				description: 'Value to use if conversion fails. Leave empty to keep original.',
 			},
+
+			// ================================================================
+			// GLOBAL OPTIONS (for all operations)
+			// ================================================================
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Track Changes',
+						name: 'trackChanges',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to include a _changes field showing what was modified (before/after values)',
+					},
+					{
+						displayName: 'Continue On Fail',
+						name: 'continueOnFail',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to continue processing other items if one item fails',
+					},
+					{
+						displayName: 'Skip Unchanged',
+						name: 'skipUnchanged',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to exclude items from output if no changes were made',
+					},
+					{
+						displayName: 'Case Insensitive Fields',
+						name: 'caseInsensitiveFields',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to match field names case-insensitively (e.g., "name" matches "Name" or "NAME")',
+					},
+					{
+						displayName: 'Debug Mode',
+						name: 'debugMode',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to include detailed debug info in _debug field showing field lookup and transformation steps',
+					},
+				],
+			},
 		],
 	};
 
@@ -929,6 +1069,8 @@ async function executeDeduplicateFuzzy(
 	const fieldsToCheckRaw = this.getNodeParameter('fieldsToCheck', 0) as string;
 	const fuzzyThreshold = this.getNodeParameter('fuzzyThreshold', 0) as number;
 	const outputDuplicateInfo = this.getNodeParameter('outputDuplicateInfo', 0) as boolean;
+	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const trackChanges = options.trackChanges as boolean || false;
 
 	// Parse fields to check
 	const fieldsToCheck = fieldsToCheckRaw
@@ -951,8 +1093,8 @@ async function executeDeduplicateFuzzy(
 		);
 	}
 
-	// Extract JSON data from items
-	const records = items.map((item) => item.json as Record<string, unknown>);
+	// Extract JSON data from items (deep clone to avoid mutation)
+	const records = items.map((item) => deepClone(item.json) as Record<string, unknown>);
 
 	// Perform deduplication using our native algorithm
 	const { deduplicated, removedCount, duplicateGroups } = deduplicateFuzzy(
@@ -978,6 +1120,20 @@ async function executeDeduplicateFuzzy(
 		} as unknown as IDataObject;
 	}
 
+	// Add changes metadata if tracking is enabled
+	if (trackChanges && returnData.length > 0) {
+		const changes: ChangeRecord[] = [];
+		if (removedCount > 0) {
+			changes.push({
+				field: '_records',
+				before: items.length,
+				after: deduplicated.length,
+				operation: 'deduplicateFuzzy',
+			});
+		}
+		returnData[0].json._changes = changes as unknown as IDataObject;
+	}
+
 	return returnData;
 }
 
@@ -992,6 +1148,11 @@ async function executeCleanPhoneNumbers(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const trackChanges = options.trackChanges as boolean || false;
+	const skipUnchanged = options.skipUnchanged as boolean || false;
+	const caseInsensitiveFields = options.caseInsensitiveFields !== false; // Default true
+	const debugMode = options.debugMode as boolean || false;
 
 	for (let i = 0; i < items.length; i++) {
 		const item = items[i];
@@ -999,20 +1160,65 @@ async function executeCleanPhoneNumbers(
 		const defaultCountryCode = this.getNodeParameter('defaultCountryCode', i) as string;
 		const outputField = this.getNodeParameter('phoneOutputField', i) as string;
 
-		// Clone the item to avoid mutating the original
+		// Deep clone the item to avoid mutating the original
 		const newItem: INodeExecutionData = {
-			json: { ...item.json } as IDataObject,
+			json: deepClone(item.json) as IDataObject,
 			pairedItem: item.pairedItem,
 		};
 
-		// Get the phone value (supports nested fields)
-		const phoneValue = getNestedProperty(item.json, phoneField);
+		const changes: ChangeRecord[] = [];
+		const debugInfo: IDataObject = {};
 
-		if (phoneValue !== undefined && phoneValue !== null) {
-			const cleanedPhone = cleanPhoneNumber(String(phoneValue), defaultCountryCode);
+		// Use case-insensitive field lookup
+		const { value: phoneValue, actualFieldName } = getFieldValue(item.json, phoneField, caseInsensitiveFields);
+		const targetField = outputField || actualFieldName || phoneField;
 
-			// Determine output field
-			const targetField = outputField || phoneField;
+		if (debugMode) {
+			debugInfo.requestedField = phoneField;
+			debugInfo.actualFieldName = actualFieldName || 'NOT FOUND';
+			debugInfo.availableKeys = Object.keys(item.json);
+			debugInfo.valueFound = phoneValue !== undefined && phoneValue !== null;
+			debugInfo.valueType = phoneValue === undefined ? 'undefined' : typeof phoneValue;
+			debugInfo.caseInsensitiveEnabled = caseInsensitiveFields;
+			debugInfo.targetField = targetField;
+			debugInfo.defaultCountryCode = defaultCountryCode;
+		}
+
+		if (phoneValue === undefined || phoneValue === null || actualFieldName === undefined) {
+			// Field not found or null
+			if (trackChanges) {
+				changes.push({
+					field: phoneField,
+					before: phoneValue,
+					after: phoneValue,
+					operation: 'cleanPhoneNumbers',
+					status: 'skipped',
+					reason: `Field "${phoneField}" not found or is null. Available keys: ${Object.keys(item.json).join(', ')}`,
+				});
+			}
+		} else {
+			const originalValue = String(phoneValue);
+			const cleanedPhone = cleanPhoneNumber(originalValue, defaultCountryCode);
+
+			// Record change with appropriate status
+			if (cleanedPhone !== originalValue) {
+				changes.push({
+					field: targetField,
+					before: originalValue,
+					after: cleanedPhone,
+					operation: 'cleanPhoneNumbers',
+					status: 'changed',
+				});
+			} else if (trackChanges) {
+				changes.push({
+					field: targetField,
+					before: originalValue,
+					after: cleanedPhone,
+					operation: 'cleanPhoneNumbers',
+					status: 'skipped',
+					reason: 'Phone already in correct format',
+				});
+			}
 
 			// Set the cleaned value
 			if (targetField.includes('.')) {
@@ -1020,6 +1226,33 @@ async function executeCleanPhoneNumbers(
 			} else {
 				newItem.json[targetField] = cleanedPhone;
 			}
+		}
+
+		// Check if any actual changes were made
+		const actualChanges = changes.filter(c => c.status === 'changed');
+
+		// Skip unchanged items if option is enabled
+		if (skipUnchanged && actualChanges.length === 0) {
+			continue;
+		}
+
+		// Add changes metadata if tracking is enabled
+		if (trackChanges) {
+			newItem.json._changes = changes as unknown as IDataObject;
+			newItem.json._changesSummary = {
+				changed: actualChanges.length,
+				skipped: changes.filter(c => c.status === 'skipped').length,
+				total: changes.length,
+			} as unknown as IDataObject;
+		}
+
+		// Add debug info if debug mode is enabled
+		if (debugMode) {
+			newItem.json._debug = {
+				operation: 'cleanPhoneNumbers',
+				...debugInfo,
+				itemIndex: i,
+			} as unknown as IDataObject;
 		}
 
 		returnData.push(newItem);
@@ -1039,6 +1272,11 @@ async function executeSmartCapitalization(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const trackChanges = options.trackChanges as boolean || false;
+	const skipUnchanged = options.skipUnchanged as boolean || false;
+	const caseInsensitiveFields = options.caseInsensitiveFields !== false; // Default true
+	const debugMode = options.debugMode as boolean || false;
 
 	for (let i = 0; i < items.length; i++) {
 		const item = items[i];
@@ -1050,25 +1288,118 @@ async function executeSmartCapitalization(
 			.map((field) => field.trim())
 			.filter((field) => field.length > 0);
 
-		// Clone the item
+		// Deep clone the item to avoid mutating the original
 		const newItem: INodeExecutionData = {
-			json: { ...item.json } as IDataObject,
+			json: deepClone(item.json) as IDataObject,
 			pairedItem: item.pairedItem,
 		};
 
+		const changes: ChangeRecord[] = [];
+		const debugInfo: IDataObject[] = [];
+
 		// Process each field
 		for (const field of fields) {
-			const value = getNestedProperty(item.json, field);
+			// Use case-insensitive field lookup
+			const { value, actualFieldName } = getFieldValue(item.json, field, caseInsensitiveFields);
 
-			if (typeof value === 'string') {
-				const capitalizedValue = toTitleCase(value);
-
-				if (field.includes('.')) {
-					setNestedProperty(newItem.json as Record<string, unknown>, field, capitalizedValue);
-				} else {
-					newItem.json[field] = capitalizedValue;
-				}
+			if (debugMode) {
+				debugInfo.push({
+					requestedField: field,
+					actualFieldName: actualFieldName || 'NOT FOUND',
+					availableKeys: Object.keys(item.json),
+					valueFound: value !== undefined,
+					valueType: value === undefined ? 'undefined' : typeof value,
+					caseInsensitiveEnabled: caseInsensitiveFields,
+				});
 			}
+
+			if (value === undefined || actualFieldName === undefined) {
+				// Field not found - record this for user feedback
+				if (trackChanges) {
+					changes.push({
+						field,
+						before: undefined,
+						after: undefined,
+						operation: 'smartCapitalization',
+						status: 'skipped',
+						reason: `Field "${field}" not found in item. Available keys: ${Object.keys(item.json).join(', ')}`,
+					});
+				}
+				continue;
+			}
+
+			if (typeof value !== 'string') {
+				// Field exists but is not a string
+				if (trackChanges) {
+					changes.push({
+						field: actualFieldName,
+						before: value,
+						after: value,
+						operation: 'smartCapitalization',
+						status: 'skipped',
+						reason: `Field "${actualFieldName}" is not a string (type: ${typeof value})`,
+					});
+				}
+				continue;
+			}
+
+			const capitalizedValue = toTitleCase(value);
+
+			// Record change with appropriate status
+			if (capitalizedValue !== value) {
+				changes.push({
+					field: actualFieldName,
+					before: value,
+					after: capitalizedValue,
+					operation: 'smartCapitalization',
+					status: 'changed',
+				});
+			} else if (trackChanges) {
+				changes.push({
+					field: actualFieldName,
+					before: value,
+					after: capitalizedValue,
+					operation: 'smartCapitalization',
+					status: 'skipped',
+					reason: 'Value already in correct format',
+				});
+			}
+
+			// Use the actual field name for setting the value
+			if (actualFieldName.includes('.')) {
+				setNestedProperty(newItem.json as Record<string, unknown>, actualFieldName, capitalizedValue);
+			} else {
+				newItem.json[actualFieldName] = capitalizedValue;
+			}
+		}
+
+		// Check if any actual changes were made (not just skipped)
+		const actualChanges = changes.filter(c => c.status === 'changed');
+
+		// Skip unchanged items if option is enabled
+		if (skipUnchanged && actualChanges.length === 0) {
+			continue;
+		}
+
+		// Add changes metadata if tracking is enabled
+		if (trackChanges) {
+			newItem.json._changes = changes as unknown as IDataObject;
+			newItem.json._changesSummary = {
+				changed: actualChanges.length,
+				skipped: changes.filter(c => c.status === 'skipped').length,
+				total: changes.length,
+			} as unknown as IDataObject;
+		}
+
+		// Add debug info if debug mode is enabled
+		if (debugMode) {
+			newItem.json._debug = {
+				operation: 'smartCapitalization',
+				inputFields: fieldsRaw,
+				parsedFields: fields,
+				fieldLookups: debugInfo,
+				itemIndex: i,
+			} as unknown as IDataObject;
 		}
 
 		returnData.push(newItem);
@@ -1087,32 +1418,117 @@ async function executeNormalizeEmail(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const trackChanges = options.trackChanges as boolean || false;
+	const skipUnchanged = options.skipUnchanged as boolean || false;
+	const caseInsensitiveFields = options.caseInsensitiveFields !== false; // Default true
+	const debugMode = options.debugMode as boolean || false;
 
 	for (let i = 0; i < items.length; i++) {
 		const item = items[i];
 		const emailField = this.getNodeParameter('emailField', i) as string;
 		const outputField = this.getNodeParameter('emailOutputField', i) as string;
 
-		// Clone the item
+		// Deep clone the item to avoid mutating the original
 		const newItem: INodeExecutionData = {
-			json: { ...item.json } as IDataObject,
+			json: deepClone(item.json) as IDataObject,
 			pairedItem: item.pairedItem,
 		};
 
-		// Get the email value
-		const emailValue = getNestedProperty(item.json, emailField);
+		const changes: ChangeRecord[] = [];
+		const debugInfo: IDataObject = {};
 
-		if (typeof emailValue === 'string') {
+		// Use case-insensitive field lookup
+		const { value: emailValue, actualFieldName } = getFieldValue(item.json, emailField, caseInsensitiveFields);
+		const targetField = outputField || actualFieldName || emailField;
+
+		if (debugMode) {
+			debugInfo.requestedField = emailField;
+			debugInfo.actualFieldName = actualFieldName || 'NOT FOUND';
+			debugInfo.availableKeys = Object.keys(item.json);
+			debugInfo.valueFound = emailValue !== undefined;
+			debugInfo.valueType = emailValue === undefined ? 'undefined' : typeof emailValue;
+			debugInfo.caseInsensitiveEnabled = caseInsensitiveFields;
+			debugInfo.targetField = targetField;
+		}
+
+		if (emailValue === undefined || actualFieldName === undefined) {
+			if (trackChanges) {
+				changes.push({
+					field: emailField,
+					before: undefined,
+					after: undefined,
+					operation: 'normalizeEmail',
+					status: 'skipped',
+					reason: `Field "${emailField}" not found. Available keys: ${Object.keys(item.json).join(', ')}`,
+				});
+			}
+		} else if (typeof emailValue !== 'string') {
+			if (trackChanges) {
+				changes.push({
+					field: actualFieldName,
+					before: emailValue,
+					after: emailValue,
+					operation: 'normalizeEmail',
+					status: 'skipped',
+					reason: `Field "${actualFieldName}" is not a string (type: ${typeof emailValue})`,
+				});
+			}
+		} else {
 			const normalizedEmail = normalizeEmail(emailValue);
 
-			// Determine output field
-			const targetField = outputField || emailField;
+			// Record change with appropriate status
+			if (normalizedEmail !== emailValue) {
+				changes.push({
+					field: targetField,
+					before: emailValue,
+					after: normalizedEmail,
+					operation: 'normalizeEmail',
+					status: 'changed',
+				});
+			} else if (trackChanges) {
+				changes.push({
+					field: targetField,
+					before: emailValue,
+					after: normalizedEmail,
+					operation: 'normalizeEmail',
+					status: 'skipped',
+					reason: 'Email already in correct format',
+				});
+			}
 
 			if (targetField.includes('.')) {
 				setNestedProperty(newItem.json as Record<string, unknown>, targetField, normalizedEmail);
 			} else {
 				newItem.json[targetField] = normalizedEmail;
 			}
+		}
+
+		// Check if any actual changes were made
+		const actualChanges = changes.filter(c => c.status === 'changed');
+
+		// Skip unchanged items if option is enabled
+		if (skipUnchanged && actualChanges.length === 0) {
+			continue;
+		}
+
+		// Add changes metadata if tracking is enabled
+		if (trackChanges) {
+			newItem.json._changes = changes as unknown as IDataObject;
+			newItem.json._changesSummary = {
+				changed: actualChanges.length,
+				skipped: changes.filter(c => c.status === 'skipped').length,
+				total: changes.length,
+			} as unknown as IDataObject;
+		}
+
+		// Add debug info if debug mode is enabled
+		if (debugMode) {
+			newItem.json._debug = {
+				operation: 'normalizeEmail',
+				...debugInfo,
+				itemIndex: i,
+			} as unknown as IDataObject;
 		}
 
 		returnData.push(newItem);
@@ -1131,13 +1547,16 @@ async function executeCleanObjectKeys(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const trackChanges = options.trackChanges as boolean || false;
+	const skipUnchanged = options.skipUnchanged as boolean || false;
 
 	for (let i = 0; i < items.length; i++) {
 		const item = items[i];
 		const keyFormat = this.getNodeParameter('keyFormat', i) as 'snake_case' | 'camelCase';
 
-		// Transform the entire JSON object
-		const transformedJson = transformObjectKeys(item.json, keyFormat);
+		// Transform the entire JSON object (transformObjectKeys already creates a new object)
+		const transformedJson = transformObjectKeys(deepClone(item.json), keyFormat);
 
 		// Ensure the result is a valid IDataObject
 		if (!isObject(transformedJson)) {
@@ -1147,10 +1566,39 @@ async function executeCleanObjectKeys(
 			);
 		}
 
-		returnData.push({
+		const changes: ChangeRecord[] = [];
+
+		// Compare keys between original and transformed
+		const originalKeys = Object.keys(item.json);
+		const transformedKeys = Object.keys(transformedJson as Record<string, unknown>);
+
+		for (let k = 0; k < originalKeys.length; k++) {
+			if (originalKeys[k] !== transformedKeys[k]) {
+				changes.push({
+					field: originalKeys[k],
+					before: originalKeys[k],
+					after: transformedKeys[k],
+					operation: 'cleanObjectKeys',
+				});
+			}
+		}
+
+		// Skip unchanged items if option is enabled
+		if (skipUnchanged && changes.length === 0) {
+			continue;
+		}
+
+		const newItem: INodeExecutionData = {
 			json: transformedJson as IDataObject,
 			pairedItem: item.pairedItem,
-		});
+		};
+
+		// Add changes metadata if tracking is enabled
+		if (trackChanges) {
+			newItem.json._changes = changes as unknown as IDataObject;
+		}
+
+		returnData.push(newItem);
 	}
 
 	return returnData;
@@ -1166,32 +1614,93 @@ async function executeParseName(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const trackChanges = options.trackChanges as boolean || false;
+	const caseInsensitiveFields = options.caseInsensitiveFields !== false; // Default true
+	const debugMode = options.debugMode as boolean || false;
 
 	for (let i = 0; i < items.length; i++) {
 		const item = items[i];
 		const nameField = this.getNodeParameter('nameField', i) as string;
 		const outputPrefix = this.getNodeParameter('nameOutputPrefix', i) as string;
 
-		// Clone the item
+		// Deep clone the item
 		const newItem: INodeExecutionData = {
-			json: { ...item.json } as IDataObject,
+			json: deepClone(item.json) as IDataObject,
 			pairedItem: item.pairedItem,
 		};
 
-		// Get the name value
-		const nameValue = getNestedProperty(item.json, nameField);
+		const changes: ChangeRecord[] = [];
+		const debugInfo: IDataObject = {};
+
+		// Use case-insensitive field lookup
+		const { value: nameValue, actualFieldName } = getFieldValue(item.json, nameField, caseInsensitiveFields);
+
+		if (debugMode) {
+			debugInfo.requestedField = nameField;
+			debugInfo.actualFieldName = actualFieldName || 'NOT FOUND';
+			debugInfo.availableKeys = Object.keys(item.json);
+			debugInfo.valueFound = nameValue !== undefined;
+			debugInfo.valueType = nameValue === undefined ? 'undefined' : typeof nameValue;
+			debugInfo.caseInsensitiveEnabled = caseInsensitiveFields;
+		}
 
 		if (typeof nameValue === 'string') {
 			const parsed = parseName(nameValue);
 
 			// Add parsed fields with optional prefix
-			newItem.json[`${outputPrefix}firstName`] = parsed.firstName;
-			newItem.json[`${outputPrefix}lastName`] = parsed.lastName;
-			newItem.json[`${outputPrefix}middleName`] = parsed.middleName;
-			newItem.json[`${outputPrefix}prefix`] = parsed.prefix;
-			newItem.json[`${outputPrefix}suffix`] = parsed.suffix;
-			newItem.json[`${outputPrefix}initials`] = parsed.initials;
-			newItem.json[`${outputPrefix}fullName`] = parsed.full;
+			const fieldsAdded = [
+				{ field: `${outputPrefix}firstName`, value: parsed.firstName },
+				{ field: `${outputPrefix}lastName`, value: parsed.lastName },
+				{ field: `${outputPrefix}middleName`, value: parsed.middleName },
+				{ field: `${outputPrefix}prefix`, value: parsed.prefix },
+				{ field: `${outputPrefix}suffix`, value: parsed.suffix },
+				{ field: `${outputPrefix}initials`, value: parsed.initials },
+				{ field: `${outputPrefix}fullName`, value: parsed.full },
+			];
+
+			for (const { field, value } of fieldsAdded) {
+				newItem.json[field] = value;
+				if (value) {
+					changes.push({
+						field,
+						before: null,
+						after: value,
+						operation: 'parseName',
+						status: 'changed',
+					});
+				}
+			}
+		} else if (trackChanges) {
+			changes.push({
+				field: nameField,
+				before: nameValue,
+				after: undefined,
+				operation: 'parseName',
+				status: 'skipped',
+				reason: actualFieldName === undefined
+					? `Field "${nameField}" not found. Available keys: ${Object.keys(item.json).join(', ')}`
+					: `Field "${actualFieldName}" is not a string (type: ${typeof nameValue})`,
+			});
+		}
+
+		// Add changes metadata if tracking is enabled
+		if (trackChanges) {
+			newItem.json._changes = changes as unknown as IDataObject;
+			newItem.json._changesSummary = {
+				changed: changes.filter(c => c.status === 'changed').length,
+				skipped: changes.filter(c => c.status === 'skipped').length,
+				total: changes.length,
+			} as unknown as IDataObject;
+		}
+
+		// Add debug info if debug mode is enabled
+		if (debugMode) {
+			newItem.json._debug = {
+				operation: 'parseName',
+				...debugInfo,
+				itemIndex: i,
+			} as unknown as IDataObject;
 		}
 
 		returnData.push(newItem);
@@ -1210,30 +1719,91 @@ async function executeParseUsername(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const trackChanges = options.trackChanges as boolean || false;
+	const caseInsensitiveFields = options.caseInsensitiveFields !== false; // Default true
+	const debugMode = options.debugMode as boolean || false;
 
 	for (let i = 0; i < items.length; i++) {
 		const item = items[i];
 		const usernameField = this.getNodeParameter('usernameField', i) as string;
 		const outputPrefix = this.getNodeParameter('usernameOutputPrefix', i) as string;
 
-		// Clone the item
+		// Deep clone the item
 		const newItem: INodeExecutionData = {
-			json: { ...item.json } as IDataObject,
+			json: deepClone(item.json) as IDataObject,
 			pairedItem: item.pairedItem,
 		};
 
-		// Get the username value
-		const usernameValue = getNestedProperty(item.json, usernameField);
+		const changes: ChangeRecord[] = [];
+		const debugInfo: IDataObject = {};
+
+		// Use case-insensitive field lookup
+		const { value: usernameValue, actualFieldName } = getFieldValue(item.json, usernameField, caseInsensitiveFields);
+
+		if (debugMode) {
+			debugInfo.requestedField = usernameField;
+			debugInfo.actualFieldName = actualFieldName || 'NOT FOUND';
+			debugInfo.availableKeys = Object.keys(item.json);
+			debugInfo.valueFound = usernameValue !== undefined;
+			debugInfo.valueType = usernameValue === undefined ? 'undefined' : typeof usernameValue;
+			debugInfo.caseInsensitiveEnabled = caseInsensitiveFields;
+		}
 
 		if (typeof usernameValue === 'string') {
 			const parsed = parseUsername(usernameValue);
 
 			// Add parsed fields with optional prefix
-			newItem.json[`${outputPrefix}firstName`] = parsed.firstName;
-			newItem.json[`${outputPrefix}lastName`] = parsed.lastName;
-			newItem.json[`${outputPrefix}middleName`] = parsed.middleName;
-			newItem.json[`${outputPrefix}initials`] = parsed.initials;
-			newItem.json[`${outputPrefix}fullName`] = parsed.full;
+			const fieldsAdded = [
+				{ field: `${outputPrefix}firstName`, value: parsed.firstName },
+				{ field: `${outputPrefix}lastName`, value: parsed.lastName },
+				{ field: `${outputPrefix}middleName`, value: parsed.middleName },
+				{ field: `${outputPrefix}initials`, value: parsed.initials },
+				{ field: `${outputPrefix}fullName`, value: parsed.full },
+			];
+
+			for (const { field, value } of fieldsAdded) {
+				newItem.json[field] = value;
+				if (value) {
+					changes.push({
+						field,
+						before: null,
+						after: value,
+						operation: 'parseUsername',
+						status: 'changed',
+					});
+				}
+			}
+		} else if (trackChanges) {
+			changes.push({
+				field: usernameField,
+				before: usernameValue,
+				after: undefined,
+				operation: 'parseUsername',
+				status: 'skipped',
+				reason: actualFieldName === undefined
+					? `Field "${usernameField}" not found. Available keys: ${Object.keys(item.json).join(', ')}`
+					: `Field "${actualFieldName}" is not a string (type: ${typeof usernameValue})`,
+			});
+		}
+
+		// Add changes metadata if tracking is enabled
+		if (trackChanges) {
+			newItem.json._changes = changes as unknown as IDataObject;
+			newItem.json._changesSummary = {
+				changed: changes.filter(c => c.status === 'changed').length,
+				skipped: changes.filter(c => c.status === 'skipped').length,
+				total: changes.length,
+			} as unknown as IDataObject;
+		}
+
+		// Add debug info if debug mode is enabled
+		if (debugMode) {
+			newItem.json._debug = {
+				operation: 'parseUsername',
+				...debugInfo,
+				itemIndex: i,
+			} as unknown as IDataObject;
 		}
 
 		returnData.push(newItem);
@@ -1252,6 +1822,10 @@ async function executeParsePhoneNumber(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const trackChanges = options.trackChanges as boolean || false;
+	const caseInsensitiveFields = options.caseInsensitiveFields !== false; // Default true
+	const debugMode = options.debugMode as boolean || false;
 
 	for (let i = 0; i < items.length; i++) {
 		const item = items[i];
@@ -1259,27 +1833,82 @@ async function executeParsePhoneNumber(
 		const defaultCountry = this.getNodeParameter('parsePhoneDefaultCountry', i) as string;
 		const outputPrefix = this.getNodeParameter('parsePhoneOutputPrefix', i) as string;
 
-		// Clone the item
+		// Deep clone the item
 		const newItem: INodeExecutionData = {
-			json: { ...item.json } as IDataObject,
+			json: deepClone(item.json) as IDataObject,
 			pairedItem: item.pairedItem,
 		};
 
-		// Get the phone value
-		const phoneValue = getNestedProperty(item.json, phoneField);
+		const changes: ChangeRecord[] = [];
+		const debugInfo: IDataObject = {};
 
-		if (phoneValue !== undefined && phoneValue !== null) {
+		// Use case-insensitive field lookup
+		const { value: phoneValue, actualFieldName } = getFieldValue(item.json, phoneField, caseInsensitiveFields);
+
+		if (debugMode) {
+			debugInfo.requestedField = phoneField;
+			debugInfo.actualFieldName = actualFieldName || 'NOT FOUND';
+			debugInfo.availableKeys = Object.keys(item.json);
+			debugInfo.valueFound = phoneValue !== undefined && phoneValue !== null;
+			debugInfo.valueType = phoneValue === undefined ? 'undefined' : typeof phoneValue;
+			debugInfo.caseInsensitiveEnabled = caseInsensitiveFields;
+		}
+
+		if (phoneValue !== undefined && phoneValue !== null && actualFieldName !== undefined) {
 			const parsed = parsePhoneNumber(String(phoneValue), defaultCountry);
 
 			// Add parsed fields with prefix
-			newItem.json[`${outputPrefix}e164`] = parsed.e164;
-			newItem.json[`${outputPrefix}national`] = parsed.national;
-			newItem.json[`${outputPrefix}international`] = parsed.international;
-			newItem.json[`${outputPrefix}countryCode`] = parsed.countryCode;
-			newItem.json[`${outputPrefix}areaCode`] = parsed.areaCode;
-			newItem.json[`${outputPrefix}localNumber`] = parsed.localNumber;
-			newItem.json[`${outputPrefix}extension`] = parsed.extension;
-			newItem.json[`${outputPrefix}isValid`] = parsed.isValid;
+			const fieldsAdded = [
+				{ field: `${outputPrefix}e164`, value: parsed.e164 },
+				{ field: `${outputPrefix}national`, value: parsed.national },
+				{ field: `${outputPrefix}international`, value: parsed.international },
+				{ field: `${outputPrefix}countryCode`, value: parsed.countryCode },
+				{ field: `${outputPrefix}areaCode`, value: parsed.areaCode },
+				{ field: `${outputPrefix}localNumber`, value: parsed.localNumber },
+				{ field: `${outputPrefix}extension`, value: parsed.extension },
+				{ field: `${outputPrefix}isValid`, value: parsed.isValid },
+			];
+
+			for (const { field, value } of fieldsAdded) {
+				newItem.json[field] = value as IDataObject[keyof IDataObject];
+				if (value !== '' && value !== null && value !== undefined) {
+					changes.push({
+						field,
+						before: null,
+						after: value,
+						operation: 'parsePhoneNumber',
+						status: 'changed',
+					});
+				}
+			}
+		} else if (trackChanges) {
+			changes.push({
+				field: phoneField,
+				before: phoneValue,
+				after: undefined,
+				operation: 'parsePhoneNumber',
+				status: 'skipped',
+				reason: `Field "${phoneField}" not found or is null. Available keys: ${Object.keys(item.json).join(', ')}`,
+			});
+		}
+
+		// Add changes metadata if tracking is enabled
+		if (trackChanges) {
+			newItem.json._changes = changes as unknown as IDataObject;
+			newItem.json._changesSummary = {
+				changed: changes.filter(c => c.status === 'changed').length,
+				skipped: changes.filter(c => c.status === 'skipped').length,
+				total: changes.length,
+			} as unknown as IDataObject;
+		}
+
+		// Add debug info if debug mode is enabled
+		if (debugMode) {
+			newItem.json._debug = {
+				operation: 'parsePhoneNumber',
+				...debugInfo,
+				itemIndex: i,
+			} as unknown as IDataObject;
 		}
 
 		returnData.push(newItem);
@@ -1298,33 +1927,94 @@ async function executeParseAddress(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const trackChanges = options.trackChanges as boolean || false;
+	const caseInsensitiveFields = options.caseInsensitiveFields !== false; // Default true
+	const debugMode = options.debugMode as boolean || false;
 
 	for (let i = 0; i < items.length; i++) {
 		const item = items[i];
 		const addressField = this.getNodeParameter('addressField', i) as string;
 		const outputPrefix = this.getNodeParameter('addressOutputPrefix', i) as string;
 
-		// Clone the item
+		// Deep clone the item
 		const newItem: INodeExecutionData = {
-			json: { ...item.json } as IDataObject,
+			json: deepClone(item.json) as IDataObject,
 			pairedItem: item.pairedItem,
 		};
 
-		// Get the address value
-		const addressValue = getNestedProperty(item.json, addressField);
+		const changes: ChangeRecord[] = [];
+		const debugInfo: IDataObject = {};
+
+		// Use case-insensitive field lookup
+		const { value: addressValue, actualFieldName } = getFieldValue(item.json, addressField, caseInsensitiveFields);
+
+		if (debugMode) {
+			debugInfo.requestedField = addressField;
+			debugInfo.actualFieldName = actualFieldName || 'NOT FOUND';
+			debugInfo.availableKeys = Object.keys(item.json);
+			debugInfo.valueFound = addressValue !== undefined;
+			debugInfo.valueType = addressValue === undefined ? 'undefined' : typeof addressValue;
+			debugInfo.caseInsensitiveEnabled = caseInsensitiveFields;
+		}
 
 		if (typeof addressValue === 'string') {
 			const parsed = parseAddress(addressValue);
 
 			// Add parsed fields with prefix
-			newItem.json[`${outputPrefix}streetNumber`] = parsed.streetNumber;
-			newItem.json[`${outputPrefix}streetName`] = parsed.streetName;
-			newItem.json[`${outputPrefix}streetAddress`] = parsed.streetAddress;
-			newItem.json[`${outputPrefix}unit`] = parsed.unit;
-			newItem.json[`${outputPrefix}city`] = parsed.city;
-			newItem.json[`${outputPrefix}state`] = parsed.state;
-			newItem.json[`${outputPrefix}postalCode`] = parsed.postalCode;
-			newItem.json[`${outputPrefix}country`] = parsed.country;
+			const fieldsAdded = [
+				{ field: `${outputPrefix}streetNumber`, value: parsed.streetNumber },
+				{ field: `${outputPrefix}streetName`, value: parsed.streetName },
+				{ field: `${outputPrefix}streetAddress`, value: parsed.streetAddress },
+				{ field: `${outputPrefix}unit`, value: parsed.unit },
+				{ field: `${outputPrefix}city`, value: parsed.city },
+				{ field: `${outputPrefix}state`, value: parsed.state },
+				{ field: `${outputPrefix}postalCode`, value: parsed.postalCode },
+				{ field: `${outputPrefix}country`, value: parsed.country },
+			];
+
+			for (const { field, value } of fieldsAdded) {
+				newItem.json[field] = value;
+				if (value) {
+					changes.push({
+						field,
+						before: null,
+						after: value,
+						operation: 'parseAddress',
+						status: 'changed',
+					});
+				}
+			}
+		} else if (trackChanges) {
+			changes.push({
+				field: addressField,
+				before: addressValue,
+				after: undefined,
+				operation: 'parseAddress',
+				status: 'skipped',
+				reason: actualFieldName === undefined
+					? `Field "${addressField}" not found. Available keys: ${Object.keys(item.json).join(', ')}`
+					: `Field "${actualFieldName}" is not a string (type: ${typeof addressValue})`,
+			});
+		}
+
+		// Add changes metadata if tracking is enabled
+		if (trackChanges) {
+			newItem.json._changes = changes as unknown as IDataObject;
+			newItem.json._changesSummary = {
+				changed: changes.filter(c => c.status === 'changed').length,
+				skipped: changes.filter(c => c.status === 'skipped').length,
+				total: changes.length,
+			} as unknown as IDataObject;
+		}
+
+		// Add debug info if debug mode is enabled
+		if (debugMode) {
+			newItem.json._debug = {
+				operation: 'parseAddress',
+				...debugInfo,
+				itemIndex: i,
+			} as unknown as IDataObject;
 		}
 
 		returnData.push(newItem);
@@ -1343,6 +2033,10 @@ async function executeExtractFromText(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const trackChanges = options.trackChanges as boolean || false;
+	const caseInsensitiveFields = options.caseInsensitiveFields !== false; // Default true
+	const debugMode = options.debugMode as boolean || false;
 
 	for (let i = 0; i < items.length; i++) {
 		const item = items[i];
@@ -1350,14 +2044,26 @@ async function executeExtractFromText(
 		const extractTypes = this.getNodeParameter('extractTypes', i) as string[];
 		const outputPrefix = this.getNodeParameter('extractOutputPrefix', i) as string;
 
-		// Clone the item
+		// Deep clone the item
 		const newItem: INodeExecutionData = {
-			json: { ...item.json } as IDataObject,
+			json: deepClone(item.json) as IDataObject,
 			pairedItem: item.pairedItem,
 		};
 
-		// Get the text value
-		const textValue = getNestedProperty(item.json, textField);
+		const changes: ChangeRecord[] = [];
+		const debugInfo: IDataObject = {};
+
+		// Use case-insensitive field lookup
+		const { value: textValue, actualFieldName } = getFieldValue(item.json, textField, caseInsensitiveFields);
+
+		if (debugMode) {
+			debugInfo.requestedField = textField;
+			debugInfo.actualFieldName = actualFieldName || 'NOT FOUND';
+			debugInfo.availableKeys = Object.keys(item.json);
+			debugInfo.valueFound = textValue !== undefined;
+			debugInfo.valueType = textValue === undefined ? 'undefined' : typeof textValue;
+			debugInfo.caseInsensitiveEnabled = caseInsensitiveFields;
+		}
 
 		if (typeof textValue === 'string') {
 			const extracted = extractFromText(textValue);
@@ -1365,9 +2071,51 @@ async function executeExtractFromText(
 			// Add only the requested extraction types
 			for (const type of extractTypes) {
 				if (type in extracted) {
-					newItem.json[`${outputPrefix}${type}`] = extracted[type as keyof typeof extracted];
+					const field = `${outputPrefix}${type}`;
+					const value = extracted[type as keyof typeof extracted];
+					newItem.json[field] = value as IDataObject[keyof IDataObject];
+
+					if (Array.isArray(value) && value.length > 0) {
+						changes.push({
+							field,
+							before: null,
+							after: value,
+							operation: 'extractFromText',
+							status: 'changed',
+						});
+					}
 				}
 			}
+		} else if (trackChanges) {
+			changes.push({
+				field: textField,
+				before: textValue,
+				after: undefined,
+				operation: 'extractFromText',
+				status: 'skipped',
+				reason: actualFieldName === undefined
+					? `Field "${textField}" not found. Available keys: ${Object.keys(item.json).join(', ')}`
+					: `Field "${actualFieldName}" is not a string (type: ${typeof textValue})`,
+			});
+		}
+
+		// Add changes metadata if tracking is enabled
+		if (trackChanges) {
+			newItem.json._changes = changes as unknown as IDataObject;
+			newItem.json._changesSummary = {
+				changed: changes.filter(c => c.status === 'changed').length,
+				skipped: changes.filter(c => c.status === 'skipped').length,
+				total: changes.length,
+			} as unknown as IDataObject;
+		}
+
+		// Add debug info if debug mode is enabled
+		if (debugMode) {
+			newItem.json._debug = {
+				operation: 'extractFromText',
+				...debugInfo,
+				itemIndex: i,
+			} as unknown as IDataObject;
 		}
 
 		returnData.push(newItem);
@@ -1386,6 +2134,11 @@ async function executeFormatText(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const trackChanges = options.trackChanges as boolean || false;
+	const skipUnchanged = options.skipUnchanged as boolean || false;
+	const caseInsensitiveFields = options.caseInsensitiveFields !== false; // Default true
+	const debugMode = options.debugMode as boolean || false;
 
 	for (let i = 0; i < items.length; i++) {
 		const item = items[i];
@@ -1400,14 +2153,28 @@ async function executeFormatText(
 		const maxLength = this.getNodeParameter('formatMaxLength', i) as number;
 		const truncationIndicator = this.getNodeParameter('formatTruncationIndicator', i) as string;
 
-		// Clone the item
+		// Deep clone the item
 		const newItem: INodeExecutionData = {
-			json: { ...item.json } as IDataObject,
+			json: deepClone(item.json) as IDataObject,
 			pairedItem: item.pairedItem,
 		};
 
-		// Get the text value
-		const textValue = getNestedProperty(item.json, textField);
+		const changes: ChangeRecord[] = [];
+		const debugInfo: IDataObject = {};
+
+		// Use case-insensitive field lookup
+		const { value: textValue, actualFieldName } = getFieldValue(item.json, textField, caseInsensitiveFields);
+		const targetField = outputField || actualFieldName || textField;
+
+		if (debugMode) {
+			debugInfo.requestedField = textField;
+			debugInfo.actualFieldName = actualFieldName || 'NOT FOUND';
+			debugInfo.availableKeys = Object.keys(item.json);
+			debugInfo.valueFound = textValue !== undefined;
+			debugInfo.valueType = textValue === undefined ? 'undefined' : typeof textValue;
+			debugInfo.caseInsensitiveEnabled = caseInsensitiveFields;
+			debugInfo.targetField = targetField;
+		}
 
 		if (typeof textValue === 'string') {
 			let result = textValue;
@@ -1450,14 +2217,67 @@ async function executeFormatText(
 				}
 			}
 
-			// Determine output field
-			const targetField = outputField || textField;
+			// Record change if value actually changed
+			if (result !== textValue) {
+				changes.push({
+					field: targetField,
+					before: textValue,
+					after: result,
+					operation: 'formatText',
+					status: 'changed',
+				});
+			} else if (trackChanges) {
+				changes.push({
+					field: targetField,
+					before: textValue,
+					after: result,
+					operation: 'formatText',
+					status: 'skipped',
+					reason: 'Value already in correct format',
+				});
+			}
 
 			if (targetField.includes('.')) {
 				setNestedProperty(newItem.json as Record<string, unknown>, targetField, result);
 			} else {
 				newItem.json[targetField] = result;
 			}
+		} else if (trackChanges) {
+			changes.push({
+				field: textField,
+				before: textValue,
+				after: undefined,
+				operation: 'formatText',
+				status: 'skipped',
+				reason: actualFieldName === undefined
+					? `Field "${textField}" not found. Available keys: ${Object.keys(item.json).join(', ')}`
+					: `Field "${actualFieldName}" is not a string (type: ${typeof textValue})`,
+			});
+		}
+
+		// Skip unchanged items if option is enabled
+		const actualChanges = changes.filter(c => c.status === 'changed');
+		if (skipUnchanged && actualChanges.length === 0) {
+			continue;
+		}
+
+		// Add changes metadata if tracking is enabled
+		if (trackChanges) {
+			newItem.json._changes = changes as unknown as IDataObject;
+			newItem.json._changesSummary = {
+				changed: actualChanges.length,
+				skipped: changes.filter(c => c.status === 'skipped').length,
+				total: changes.length,
+			} as unknown as IDataObject;
+		}
+
+		// Add debug info if debug mode is enabled
+		if (debugMode) {
+			newItem.json._debug = {
+				operation: 'formatText',
+				...debugInfo,
+				itemIndex: i,
+			} as unknown as IDataObject;
 		}
 
 		returnData.push(newItem);
@@ -1476,6 +2296,10 @@ async function executeSplitText(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const trackChanges = options.trackChanges as boolean || false;
+	const caseInsensitiveFields = options.caseInsensitiveFields !== false; // Default true
+	const debugMode = options.debugMode as boolean || false;
 
 	for (let i = 0; i < items.length; i++) {
 		const item = items[i];
@@ -1483,33 +2307,85 @@ async function executeSplitText(
 		const splitMode = this.getNodeParameter('splitMode', i) as string;
 		const outputField = this.getNodeParameter('splitOutputField', i) as string;
 
-		// Clone the item
+		// Deep clone the item
 		const newItem: INodeExecutionData = {
-			json: { ...item.json } as IDataObject,
+			json: deepClone(item.json) as IDataObject,
 			pairedItem: item.pairedItem,
 		};
 
-		// Get the text value
-		const textValue = getNestedProperty(item.json, textField);
+		const changes: ChangeRecord[] = [];
+		const debugInfo: IDataObject = {};
+
+		// Use case-insensitive field lookup
+		const { value: textValue, actualFieldName } = getFieldValue(item.json, textField, caseInsensitiveFields);
+
+		if (debugMode) {
+			debugInfo.requestedField = textField;
+			debugInfo.actualFieldName = actualFieldName || 'NOT FOUND';
+			debugInfo.availableKeys = Object.keys(item.json);
+			debugInfo.valueFound = textValue !== undefined;
+			debugInfo.valueType = textValue === undefined ? 'undefined' : typeof textValue;
+			debugInfo.caseInsensitiveEnabled = caseInsensitiveFields;
+		}
 
 		if (typeof textValue === 'string') {
+			let result: unknown;
+
 			if (splitMode === 'toArray') {
 				const delimitersRaw = this.getNodeParameter('splitDelimiters', i) as string;
 				// Convert string to array of individual characters
 				const delimiters = delimitersRaw.split('').filter(d => d.length > 0);
-				const result = splitMultiple(textValue, delimiters.length > 0 ? delimiters : undefined);
-				newItem.json[outputField] = result;
+				result = splitMultiple(textValue, delimiters.length > 0 ? delimiters : undefined);
+				newItem.json[outputField] = result as IDataObject[keyof IDataObject];
 			} else {
 				// toKeyValue mode
 				const pairDelimiter = this.getNodeParameter('splitPairDelimiter', i) as string;
 				const kvDelimiter = this.getNodeParameter('splitKvDelimiter', i) as string;
-				const result = splitKeyValue(
+				result = splitKeyValue(
 					textValue,
 					pairDelimiter || undefined,
 					kvDelimiter || undefined,
 				);
-				newItem.json[outputField] = result;
+				newItem.json[outputField] = result as IDataObject[keyof IDataObject];
 			}
+
+			changes.push({
+				field: outputField,
+				before: textValue,
+				after: result,
+				operation: 'splitText',
+				status: 'changed',
+			});
+		} else if (trackChanges) {
+			changes.push({
+				field: textField,
+				before: textValue,
+				after: undefined,
+				operation: 'splitText',
+				status: 'skipped',
+				reason: actualFieldName === undefined
+					? `Field "${textField}" not found. Available keys: ${Object.keys(item.json).join(', ')}`
+					: `Field "${actualFieldName}" is not a string (type: ${typeof textValue})`,
+			});
+		}
+
+		// Add changes metadata if tracking is enabled
+		if (trackChanges) {
+			newItem.json._changes = changes as unknown as IDataObject;
+			newItem.json._changesSummary = {
+				changed: changes.filter(c => c.status === 'changed').length,
+				skipped: changes.filter(c => c.status === 'skipped').length,
+				total: changes.length,
+			} as unknown as IDataObject;
+		}
+
+		// Add debug info if debug mode is enabled
+		if (debugMode) {
+			newItem.json._debug = {
+				operation: 'splitText',
+				...debugInfo,
+				itemIndex: i,
+			} as unknown as IDataObject;
 		}
 
 		returnData.push(newItem);
@@ -1528,6 +2404,11 @@ async function executeConvertDataType(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const trackChanges = options.trackChanges as boolean || false;
+	const skipUnchanged = options.skipUnchanged as boolean || false;
+	const caseInsensitiveFields = options.caseInsensitiveFields !== false; // Default true
+	const debugMode = options.debugMode as boolean || false;
 
 	for (let i = 0; i < items.length; i++) {
 		const item = items[i];
@@ -1536,46 +2417,120 @@ async function executeConvertDataType(
 		const outputField = this.getNodeParameter('convertOutputField', i) as string;
 		const defaultValue = this.getNodeParameter('convertDefaultValue', i) as string;
 
-		// Clone the item
+		// Deep clone the item
 		const newItem: INodeExecutionData = {
-			json: { ...item.json } as IDataObject,
+			json: deepClone(item.json) as IDataObject,
 			pairedItem: item.pairedItem,
 		};
 
-		// Get the source value
-		const sourceValue = getNestedProperty(item.json, sourceField);
-		let convertedValue: unknown = sourceValue;
+		const changes: ChangeRecord[] = [];
+		const debugInfo: IDataObject = {};
 
-		try {
-			switch (targetType) {
-				case 'string':
-					convertedValue = toString(sourceValue, defaultValue || '');
-					break;
-				case 'number':
-					convertedValue = toNumber(sourceValue, defaultValue ? parseFloat(defaultValue) : 0);
-					break;
-				case 'integer':
-					const num = toNumber(sourceValue, defaultValue ? parseFloat(defaultValue) : 0);
-					convertedValue = Math.round(num);
-					break;
-				case 'boolean':
-					convertedValue = toBoolean(sourceValue, defaultValue ? toBoolean(defaultValue) : false);
-					break;
-			}
-		} catch {
-			// If conversion fails, use default or original
-			if (defaultValue) {
-				convertedValue = defaultValue;
-			}
+		// Use case-insensitive field lookup
+		const { value: sourceValue, actualFieldName } = getFieldValue(item.json, sourceField, caseInsensitiveFields);
+		const targetField = outputField || actualFieldName || sourceField;
+
+		if (debugMode) {
+			debugInfo.requestedField = sourceField;
+			debugInfo.actualFieldName = actualFieldName || 'NOT FOUND';
+			debugInfo.availableKeys = Object.keys(item.json);
+			debugInfo.valueFound = sourceValue !== undefined;
+			debugInfo.valueType = sourceValue === undefined ? 'undefined' : typeof sourceValue;
+			debugInfo.caseInsensitiveEnabled = caseInsensitiveFields;
+			debugInfo.targetField = targetField;
+			debugInfo.targetType = targetType;
 		}
 
-		// Determine output field
-		const targetField = outputField || sourceField;
+		let convertedValue: unknown = sourceValue;
+		let conversionSucceeded = false;
 
-		if (targetField.includes('.')) {
-			setNestedProperty(newItem.json as Record<string, unknown>, targetField, convertedValue);
-		} else {
-			newItem.json[targetField] = convertedValue as IDataObject[keyof IDataObject];
+		if (actualFieldName !== undefined) {
+			try {
+				switch (targetType) {
+					case 'string':
+						convertedValue = toString(sourceValue, defaultValue || '');
+						conversionSucceeded = true;
+						break;
+					case 'number':
+						convertedValue = toNumber(sourceValue, defaultValue ? parseFloat(defaultValue) : 0);
+						conversionSucceeded = true;
+						break;
+					case 'integer':
+						const num = toNumber(sourceValue, defaultValue ? parseFloat(defaultValue) : 0);
+						convertedValue = Math.round(num);
+						conversionSucceeded = true;
+						break;
+					case 'boolean':
+						convertedValue = toBoolean(sourceValue, defaultValue ? toBoolean(defaultValue) : false);
+						conversionSucceeded = true;
+						break;
+				}
+			} catch {
+				// If conversion fails, use default or original
+				if (defaultValue) {
+					convertedValue = defaultValue;
+				}
+			}
+
+			// Record change if value actually changed
+			if (convertedValue !== sourceValue) {
+				changes.push({
+					field: targetField,
+					before: sourceValue,
+					after: convertedValue,
+					operation: 'convertDataType',
+					status: 'changed',
+				});
+			} else if (trackChanges && conversionSucceeded) {
+				changes.push({
+					field: targetField,
+					before: sourceValue,
+					after: convertedValue,
+					operation: 'convertDataType',
+					status: 'skipped',
+					reason: 'Value already in target type',
+				});
+			}
+
+			if (targetField.includes('.')) {
+				setNestedProperty(newItem.json as Record<string, unknown>, targetField, convertedValue);
+			} else {
+				newItem.json[targetField] = convertedValue as IDataObject[keyof IDataObject];
+			}
+		} else if (trackChanges) {
+			changes.push({
+				field: sourceField,
+				before: undefined,
+				after: undefined,
+				operation: 'convertDataType',
+				status: 'skipped',
+				reason: `Field "${sourceField}" not found. Available keys: ${Object.keys(item.json).join(', ')}`,
+			});
+		}
+
+		// Skip unchanged items if option is enabled
+		const actualChanges = changes.filter(c => c.status === 'changed');
+		if (skipUnchanged && actualChanges.length === 0) {
+			continue;
+		}
+
+		// Add changes metadata if tracking is enabled
+		if (trackChanges) {
+			newItem.json._changes = changes as unknown as IDataObject;
+			newItem.json._changesSummary = {
+				changed: actualChanges.length,
+				skipped: changes.filter(c => c.status === 'skipped').length,
+				total: changes.length,
+			} as unknown as IDataObject;
+		}
+
+		// Add debug info if debug mode is enabled
+		if (debugMode) {
+			newItem.json._debug = {
+				operation: 'convertDataType',
+				...debugInfo,
+				itemIndex: i,
+			} as unknown as IDataObject;
 		}
 
 		returnData.push(newItem);
