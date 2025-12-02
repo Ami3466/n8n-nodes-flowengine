@@ -435,7 +435,12 @@ For workflows handling multiple independent conversations:
 
 ## Version history
 
-### 1.9.0 (Latest)
+### 1.9.1 (Latest)
+
+- Build and packaging fixes for AI Session Manager and Data Cleaner nodes
+- Verified all node exports and configurations
+
+### 1.9.0
 
 - **NEW: Data Cleaner Node** - Clean and transform data without code
   - Deduplicate (Fuzzy): Remove duplicates using Jaro-Winkler/Levenshtein algorithms
