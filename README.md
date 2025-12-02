@@ -6,6 +6,7 @@ This package provides:
 - **FlowEngine AI workflow builder** - Build complete, validated workflows from plain text
 - **FlowEngine LLM Chat Model** - Use all AI models with one API key from FlowEngine (pre-configured for FlowEngine-hosted n8n)
 - **AI Session Manager** - The missing link for AI Agent setup - generate and manage session IDs effortlessly
+- **Data Cleaner** - Clean and transform data without code - deduplicate, format phones, normalize emails, and more
 - **Send Email Test** - Free zero-setup email testing, no API key needed
 
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/reference/license/) workflow automation platform.
@@ -38,7 +39,7 @@ RUN cd /usr/local/lib/node_modules/n8n && npm install n8n-nodes-flowengine
 
 ## Nodes
 
-This package includes **4 powerful nodes**:
+This package includes **5 powerful nodes**:
 
 ### 1. Send Email Test
 
@@ -200,6 +201,56 @@ Loop with Persistent Memory:
 [Trigger] → [Split In Batches] → [AI Session Manager (Manage Loop)] → [AI Agent] → [Loop]
 ```
 
+---
+
+### 5. Data Cleaner
+
+**Stop writing Code Nodes to clean your data. Use this.**
+
+A production-ready node that cleans and transforms messy data without writing a single line of code. Built with zero runtime dependencies.
+
+**Operations:**
+
+#### Deduplicate (Fuzzy)
+Remove duplicate records using intelligent fuzzy matching (Jaro-Winkler/Levenshtein algorithms).
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| Fields to Check | Comma-separated field names to compare | Required |
+| Fuzzy Threshold | Similarity threshold (0.0-1.0) | 0.8 |
+| Output Duplicate Info | Include metadata about removed duplicates | false |
+
+#### Clean Phone Numbers
+Format phone numbers to E.164 international standard (`+15550001111`).
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| Phone Field | Field containing phone number | `phone` |
+| Default Country Code | Country code when not detected | `1` (US/Canada) |
+| Output Field | Save to different field (optional) | Same as input |
+
+#### Smart Capitalization
+Convert text to proper Title Case with intelligent handling of common patterns.
+- `jOhN dOE` → `John Doe`
+- Preserves acronyms: `IBM`, `NASA`, `CEO`
+- Handles articles: `The Lord of the Rings`
+
+#### Normalize Email
+Clean and standardize email addresses.
+- Trims whitespace
+- Converts to lowercase
+- Corrects common domain typos (`gmial.com` → `gmail.com`)
+
+#### Clean Object Keys
+Transform all JSON keys to consistent naming convention.
+- `snake_case`: `firstName` → `first_name`
+- `camelCase`: `first_name` → `firstName`
+
+**Features:**
+- ✅ **Zero Runtime Dependencies** - All algorithms implemented natively
+- ✅ **Nested Field Support** - Use dot notation (`contact.phone.mobile`)
+- ✅ **Production Ready** - Handles edge cases and validation
+
 ## Credentials
 
 You need a FlowEngine API key to use the FlowEngine Chat and FlowEngine LLM nodes.
@@ -348,6 +399,34 @@ For workflows handling multiple independent conversations:
 2. Set different **Session Keys** for each (e.g., `agent1Session`, `agent2Session`)
 3. Each AI Agent gets its own persistent session
 
+---
+
+### Data Cleaner Node Examples
+
+#### Example: Clean Contact List
+
+1. Add a **Data Cleaner** node
+2. Set **Operation**: Deduplicate (Fuzzy)
+3. **Fields to Check**: `name, email`
+4. **Fuzzy Threshold**: `0.8`
+5. Duplicate contacts like "John Smith" and "Jon Smith" are merged
+
+#### Example: Format Phone Numbers
+
+1. Add a **Data Cleaner** node
+2. Set **Operation**: Clean Phone Numbers
+3. **Phone Field**: `phone`
+4. **Default Country Code**: `1`
+5. Input: `(555) 000-1111` → Output: `+15550001111`
+
+#### Example: Normalize API Response
+
+1. Add a **Data Cleaner** node
+2. Set **Operation**: Clean Object Keys
+3. **Key Format**: `snake_case`
+4. Input: `{ "firstName": "John", "lastName": "Doe" }`
+5. Output: `{ "first_name": "John", "last_name": "Doe" }`
+
 ## Resources
 
 * [n8n community nodes documentation](https://docs.n8n.io/integrations/community-nodes/)
@@ -356,7 +435,18 @@ For workflows handling multiple independent conversations:
 
 ## Version history
 
-### 1.8.0 (Latest)
+### 1.9.0 (Latest)
+
+- **NEW: Data Cleaner Node** - Clean and transform data without code
+  - Deduplicate (Fuzzy): Remove duplicates using Jaro-Winkler/Levenshtein algorithms
+  - Clean Phone Numbers: Format to E.164 standard (+15550001111)
+  - Smart Capitalization: Intelligent Title Case conversion
+  - Normalize Email: Trim, lowercase, fix common typos
+  - Clean Object Keys: Transform to snake_case or camelCase
+  - Zero runtime dependencies - all algorithms implemented natively
+  - Supports nested fields with dot notation
+
+### 1.8.0
 
 - **NEW: AI Session Manager Node** - The missing link for AI Agent setup
   - Generate UUID v4 session IDs with zero configuration

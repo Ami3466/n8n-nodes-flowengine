@@ -1,7 +1,7 @@
 {
   "name": "n8n-nodes-flowengine",
-  "version": "1.8.0",
-  "description": "n8n nodes for FlowEngine AI + Zero-Setup Email Testing + AI Session Manager - AI automation made easy",
+  "version": "1.9.0",
+  "description": "n8n nodes for FlowEngine AI + Zero-Setup Email Testing + AI Session Manager + Data Cleaner - AI automation made easy",
   "keywords": [
     "n8n-community-node-package",
     "n8n",
@@ -18,7 +18,12 @@
     "session",
     "uuid",
     "agent",
-    "memory"
+    "memory",
+    "data-cleaner",
+    "deduplicate",
+    "fuzzy",
+    "phone",
+    "normalize"
   ],
   "license": "MIT",
   "homepage": "https://flowengine.cloud",
@@ -53,7 +58,8 @@
       "dist/nodes/FlowEngine/FlowEngine.node.js",
       "dist/nodes/FlowEngineLlm/FlowEngineLlm.node.js",
       "dist/nodes/SendEmailTest/SendEmailTest.node.js",
-      "dist/nodes/AiSessionManager/AiSessionManager.node.js"
+      "dist/nodes/AiSessionManager/AiSessionManager.node.js",
+      "dist/nodes/DataCleaner/DataCleaner.node.js"
     ]
   },
   "devDependencies": {
