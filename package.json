@@ -1,7 +1,7 @@
 {
   "name": "n8n-nodes-flowengine",
-  "version": "1.7.14",
-  "description": "n8n nodes for FlowEngine AI + Zero-Setup Email Testing - AI automation and email testing made easy",
+  "version": "1.8.0",
+  "description": "n8n nodes for FlowEngine AI + Zero-Setup Email Testing + AI Session Manager - AI automation made easy",
   "keywords": [
     "n8n-community-node-package",
     "n8n",
@@ -14,7 +14,11 @@
     "ethereal",
     "langchain",
     "openai",
-    "anthropic"
+    "anthropic",
+    "session",
+    "uuid",
+    "agent",
+    "memory"
   ],
   "license": "MIT",
   "homepage": "https://flowengine.cloud",
@@ -48,7 +52,8 @@
     "nodes": [
       "dist/nodes/FlowEngine/FlowEngine.node.js",
       "dist/nodes/FlowEngineLlm/FlowEngineLlm.node.js",
-      "dist/nodes/SendEmailTest/SendEmailTest.node.js"
+      "dist/nodes/SendEmailTest/SendEmailTest.node.js",
+      "dist/nodes/AiSessionManager/AiSessionManager.node.js"
     ]
   },
   "devDependencies": {

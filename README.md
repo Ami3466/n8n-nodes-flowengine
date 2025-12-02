@@ -5,6 +5,7 @@
 This package provides:
 - **FlowEngine AI workflow builder** - Build complete, validated workflows from plain text
 - **FlowEngine LLM Chat Model** - Use all AI models with one API key from FlowEngine (pre-configured for FlowEngine-hosted n8n)
+- **AI Session Manager** - The missing link for AI Agent setup - generate and manage session IDs effortlessly
 - **Send Email Test** - Free zero-setup email testing, no API key needed
 
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/reference/license/) workflow automation platform.
@@ -37,7 +38,7 @@ RUN cd /usr/local/lib/node_modules/n8n && npm install n8n-nodes-flowengine
 
 ## Nodes
 
-This package includes **3 powerful nodes**:
+This package includes **4 powerful nodes**:
 
 ### 1. Send Email Test
 
@@ -146,6 +147,58 @@ Pre-configured for FlowEngine-hosted n8n instances with zero setup. Self-hosted 
 - Summarize documents and extract information
 - Generate structured outputs with multiple AI models
 - Compare responses across different providers
+
+---
+
+### 4. AI Session Manager
+
+**The Missing Link for AI Agent Setup** - No more Code nodes or complex expressions just to get a session ID!
+
+When you add an AI Agent with Memory, it requires a `sessionId`. This node eliminates the friction by generating and managing session IDs automatically.
+
+**Features:**
+- ✅ **Zero External Dependencies** - Uses Node.js native `crypto.randomUUID()`
+- ✅ **Two Modes** - Simple generation or loop-persistent sessions
+- ✅ **Loop Amnesia Fix** - Maintains the same session ID across loop iterations
+- ✅ **No Configuration** - Works out of the box
+
+**Mode 1: Generate New ID**
+Creates a fresh UUID v4 for each execution. Perfect for:
+- Starting new AI conversations
+- Stateless AI interactions
+- Each workflow run = new session
+
+**Mode 2: Manage Loop Session**
+Persists one session ID across multiple loop iterations using `getWorkflowStaticData`. Perfect for:
+- Processing multiple items in a loop with the same AI Agent
+- Building multi-turn conversations within a single workflow run
+- Any scenario where the AI needs to "remember" across iterations
+
+**Parameters:**
+| Parameter | Mode | Description |
+|-----------|------|-------------|
+| Mode | All | Choose between "Generate New ID" or "Manage Loop Session" |
+| Session Key | Loop | Unique key to store/retrieve session from static data |
+| Reset Session | Loop | Force generate a new ID, replacing any existing one |
+
+**Returns:**
+```json
+{
+  "sessionId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**Example Workflows:**
+
+Basic AI Agent Setup:
+```
+[Trigger] → [AI Session Manager] → [AI Agent with Memory]
+```
+
+Loop with Persistent Memory:
+```
+[Trigger] → [Split In Batches] → [AI Session Manager (Manage Loop)] → [AI Agent] → [Loop]
+```
 
 ## Credentials
 
@@ -260,6 +313,41 @@ This allows you to pass data from previous nodes into FlowEngine.
 4. Run the same prompt through different models
 5. Compare responses and quality across providers
 
+---
+
+### AI Session Manager Node Examples
+
+#### Example: Quick AI Agent Setup
+
+1. Add a **Trigger** node (Manual, Webhook, etc.)
+2. Add an **AI Session Manager** node
+3. Set **Mode**: Generate New ID
+4. Add an **AI Agent** node
+5. In the AI Agent, set **Session ID** to: `{{ $json.sessionId }}`
+6. Done! Each execution gets a fresh session.
+
+#### Example: Loop with Persistent Memory
+
+When processing multiple items where the AI needs to remember previous iterations:
+
+1. **Trigger** node with multiple items
+2. **Split In Batches** node (batch size 1)
+3. **AI Session Manager** node
+   - Mode: `Manage Loop Session`
+   - Session Key: `customerSupportSession`
+4. **AI Agent** node using `{{ $json.sessionId }}`
+5. **Loop** back to Split In Batches
+
+The AI will maintain conversation context across all items in the loop.
+
+#### Example: Multiple Parallel Conversations
+
+For workflows handling multiple independent conversations:
+
+1. Add multiple **AI Session Manager** nodes
+2. Set different **Session Keys** for each (e.g., `agent1Session`, `agent2Session`)
+3. Each AI Agent gets its own persistent session
+
 ## Resources
 
 * [n8n community nodes documentation](https://docs.n8n.io/integrations/community-nodes/)
@@ -268,7 +356,16 @@ This allows you to pass data from previous nodes into FlowEngine.
 
 ## Version history
 
-### 1.6.0 (Latest)
+### 1.8.0 (Latest)
+
+- **NEW: AI Session Manager Node** - The missing link for AI Agent setup
+  - Generate UUID v4 session IDs with zero configuration
+  - Manage Loop Session mode for persistent sessions across loop iterations
+  - Solves the "Loop Amnesia" problem with `getWorkflowStaticData`
+  - Zero external dependencies - uses native Node.js `crypto.randomUUID()`
+  - No API key required
+
+### 1.6.0
 
 - **FlowEngine LLM Node Update**: Now uses shared FlowEngine API credentials
   - Same credentials work across all FlowEngine nodes (Chat, LLM)
