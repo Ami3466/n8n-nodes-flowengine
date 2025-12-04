@@ -11,6 +11,9 @@ import {
 
 // Custom ChatOpenAI class that removes OpenAI-specific parameters for multi-provider compatibility
 class FlowEngineChatOpenAI extends ChatOpenAI {
+	// Explicitly declare support for tool calling to enable AI Agent compatibility
+	supportsToolCalling = true;
+
 	invocationParams(options?: any, extra?: any) {
 		const params = super.invocationParams(options, extra);
 		// Remove OpenAI-specific parameters that other providers don't support
