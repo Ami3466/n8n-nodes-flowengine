@@ -141,7 +141,10 @@ export class FlowEngine implements INodeType {
             {
               method: 'POST',
               url: 'https://flowengine.cloud/api/v1/chat',
-              body,
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(body),
               json: false,
               encoding: 'utf-8',
             },
