@@ -33,8 +33,12 @@ export class FlowEngineApi implements ICredentialType {
   test: ICredentialTestRequest = {
     request: {
       baseURL: 'https://flowengine.cloud',
-      url: '/api/v1/user',
-      method: 'GET',
+      url: '/api/v1/chat',
+      method: 'POST',
+      body: {
+        message: 'test',
+        model: 'regular',
+      },
     },
   };
 }
