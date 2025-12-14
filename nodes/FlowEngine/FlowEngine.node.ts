@@ -128,11 +128,8 @@ export class FlowEngine implements INodeType {
 
           const body: any = {
             message,
+            model: model || 'regular',
           };
-
-          if (model && model !== 'regular') {
-            body.model = model;
-          }
 
           if (additionalFields.conversationId) {
             body.conversation_id = additionalFields.conversationId;
