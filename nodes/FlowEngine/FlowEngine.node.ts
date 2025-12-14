@@ -142,24 +142,64 @@ export class FlowEngine implements INodeType {
               method: 'POST',
               url: 'https://flowengine.cloud/api/v1/chat',
               body,
-              json: true,
+              json: false,
+              encoding: 'utf-8',
             },
           );
 
-          if (response.success) {
+          // Parse SSE streaming response
+          const responseText = typeof response === 'string' ? response : JSON.stringify(response);
+          
+          // Check for error response (non-streaming JSON)
+          if (responseText.startsWith('{')) {
+            try {
+              const errorJson = JSON.parse(responseText);
+              if (errorJson.success === false) {
+                throw new NodeOperationError(
+                  this.getNode(),
+                  `FlowEngine API error: ${errorJson.error || errorJson.message || 'Unknown error'}`,
+                  { itemIndex: i },
+                );
+              }
+            } catch (parseError) {
+              // Not a JSON error, continue with SSE parsing
+            }
+          }
+
+          // Extract content from SSE chunks
+          let fullContent = '';
+          let conversationId = '';
+          
+          const lines = responseText.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ') && !line.includes('[DONE]')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.choices?.[0]?.delta?.content) {
+                  fullContent += data.choices[0].delta.content;
+                }
+                if (data.conversation_id) {
+                  conversationId = data.conversation_id;
+                }
+              } catch {
+                // Skip unparseable lines
+              }
+            }
+          }
+
+          if (fullContent) {
             returnData.push({
               json: {
                 success: true,
-                response: response.response,
-                conversation_id: response.conversation_id,
-                credits_remaining: response.credits_remaining,
+                response: fullContent,
+                conversation_id: conversationId || body.conversation_id || '',
               },
               pairedItem: i,
             });
           } else {
             throw new NodeOperationError(
               this.getNode(),
-              `FlowEngine API error: ${response.error || 'Unknown error'}`,
+              'FlowEngine API error: No response content received',
               { itemIndex: i },
             );
           }
