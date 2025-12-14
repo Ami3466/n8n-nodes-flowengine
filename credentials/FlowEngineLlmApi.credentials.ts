@@ -42,7 +42,8 @@ export class FlowEngineLlmApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://flowengine.cloud',
-			url: '/api/v1/litellm/models',
+			url: '/api/v1/user',
+			method: 'GET',
 		},
 	};
 }
