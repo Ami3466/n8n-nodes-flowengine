@@ -5,22 +5,9 @@ import {
   INodeTypeDescription,
   NodeOperationError,
 } from 'n8n-workflow';
-
-// Dynamic imports for optional dependencies - allows package to install even if these fail
-let nodemailer: any;
-let ImapFlow: any;
-let simpleParser: any;
-let emailDependenciesAvailable = false;
-let emailDependencyError = '';
-
-try {
-  nodemailer = require('nodemailer');
-  ImapFlow = require('imapflow').ImapFlow;
-  simpleParser = require('mailparser').simpleParser;
-  emailDependenciesAvailable = true;
-} catch (error) {
-  emailDependencyError = error instanceof Error ? error.message : 'Failed to load email dependencies';
-}
+import * as nodemailer from 'nodemailer';
+import { ImapFlow } from 'imapflow';
+import { simpleParser } from 'mailparser';
 
 async function getEtherealAccount(context: IExecuteFunctions): Promise<any> {
   const staticData = context.getWorkflowStaticData('node');
@@ -204,16 +191,6 @@ export class SendEmailTest implements INodeType {
   };
 
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-    // Check if email dependencies are available
-    if (!emailDependenciesAvailable) {
-      throw new NodeOperationError(
-        this.getNode(),
-        `Email testing dependencies are not available: ${emailDependencyError}. ` +
-        'This node requires nodemailer, imapflow, and mailparser packages. ' +
-        'Please reinstall the n8n-nodes-flowengine package or contact support.',
-      );
-    }
-
     const items = this.getInputData();
     const returnData: INodeExecutionData[] = [];
 
