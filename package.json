@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-flowengine",
-  "version": "1.10.4",
+  "version": "1.10.6",
   "description": "n8n nodes for FlowEngine AI + Zero-Setup Email Testing + AI Session Manager + Data Cleaner - AI automation made easy",
   "keywords": [
     "n8n-community-node-package",
@@ -43,7 +43,7 @@
     "lint": "eslint nodes credentials package.json",
     "lintfix": "eslint nodes credentials package.json --fix",
     "prepublishOnly": "npm run build",
-    "postinstall": "rm -rf node_modules/imapflow/test node_modules/imapflow/examples 2>/dev/null || true"
+    "postinstall": "rm -rf node_modules/imapflow/test node_modules/imapflow/examples node_modules/imapflow/node_modules 2>/dev/null || true"
   },
   "files": [
     "dist"
@@ -72,7 +72,8 @@
     "prettier": "^2.7.1",
     "typescript": "^5.7.2"
   },
-  "dependencies": {
+  "dependencies": {},
+  "optionalDependencies": {
     "@langchain/openai": "^0.3.14",
     "imapflow": "^1.1.1",
     "mailparser": "^3.9.0",
@@ -80,5 +81,10 @@
   },
   "peerDependencies": {
     "n8n-workflow": "*"
+  },
+  "overrides": {
+    "imapflow": {
+      "nodemailer": "$nodemailer"
+    }
   }
 }
