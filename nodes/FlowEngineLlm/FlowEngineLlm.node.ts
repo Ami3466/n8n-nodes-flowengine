@@ -1,3 +1,4 @@
+import { ChatOpenAI } from '@langchain/openai';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -8,35 +9,19 @@ import {
 	type INodePropertyOptions,
 } from 'n8n-workflow';
 
-// Dynamic import for optional @langchain/openai dependency
-let ChatOpenAI: any;
-let langchainAvailable = false;
-let langchainError = '';
-
-try {
-	ChatOpenAI = require('@langchain/openai').ChatOpenAI;
-	langchainAvailable = true;
-} catch (error) {
-	langchainError = error instanceof Error ? error.message : 'Failed to load @langchain/openai';
-}
-
 // Custom ChatOpenAI class that removes OpenAI-specific parameters for multi-provider compatibility
-// Only created if langchain is available
-let FlowEngineChatOpenAI: any;
-if (langchainAvailable && ChatOpenAI) {
-	FlowEngineChatOpenAI = class extends ChatOpenAI {
-		// Explicitly declare support for tool calling to enable AI Agent compatibility
-		supportsToolCalling = true;
+class FlowEngineChatOpenAI extends ChatOpenAI {
+	// Explicitly declare support for tool calling to enable AI Agent compatibility
+	supportsToolCalling = true;
 
-		invocationParams(options?: any, extra?: any) {
-			const params = super.invocationParams(options, extra);
-			// Remove OpenAI-specific parameters that other providers don't support
-			delete params.frequency_penalty;
-			delete params.presence_penalty;
-			delete params.top_p;
-			return params;
-		}
-	};
+	invocationParams(options?: any, extra?: any) {
+		const params = super.invocationParams(options, extra);
+		// Remove OpenAI-specific parameters that other providers don't support
+		delete params.frequency_penalty;
+		delete params.presence_penalty;
+		delete params.top_p;
+		return params;
+	}
 }
 
 export class FlowEngineLlm implements INodeType {
@@ -275,14 +260,6 @@ export class FlowEngineLlm implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		// Check if langchain dependency is available
-		if (!langchainAvailable || !FlowEngineChatOpenAI) {
-			throw new Error(
-				`FlowEngine LLM Chat Model requires the @langchain/openai package which is not available: ${langchainError}. ` +
-				'Please reinstall the n8n-nodes-flowengine package or contact support.',
-			);
-		}
-
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			temperature?: number;

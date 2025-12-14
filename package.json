@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-flowengine",
-  "version": "1.10.10",
+  "version": "1.10.11",
   "description": "n8n nodes for FlowEngine AI + Zero-Setup Email Testing + AI Session Manager + Data Cleaner - AI automation made easy",
   "keywords": [
     "n8n-community-node-package",
@@ -72,9 +72,10 @@
     "prettier": "^2.7.1",
     "typescript": "^5.7.2"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@langchain/openai": "^0.3.14"
+  },
   "optionalDependencies": {
-    "@langchain/openai": "^0.3.14",
     "imapflow": "^1.1.1",
     "mailparser": "^3.9.0",
     "nodemailer": "^7.0.10"
